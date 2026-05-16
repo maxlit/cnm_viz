@@ -1,0 +1,4404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CNM Visualizer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #16213e;
+            padding: 1rem 2rem;
+            border-bottom: 2px solid #0f3460;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            color: #e94560;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tab-btn {
+            background: #0f3460;
+            color: #94a3b8;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0;
+            width: auto;
+        }
+
+        .tab-btn:hover {
+            background: #1a4a7a;
+        }
+
+        .tab-btn.active {
+            background: #e94560;
+            color: #fff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-subtitle {
+            font-family: 'Times New Roman', serif;
+            font-size: 1.1rem;
+            color: #94a3b8;
+            padding: 0.5rem 2rem;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 80px);
+        }
+
+        .panel {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 1rem;
+            overflow: auto;
+        }
+
+        .panel h2 {
+            color: #e94560;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        #graph-container {
+            width: 100%;
+            height: calc(100% - 3rem);
+            background: #0f0f1a;
+            border-radius: 4px;
+        }
+
+        #graph-container svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .node circle {
+            fill: #e94560;
+            stroke: #fff;
+            stroke-width: 2px;
+            cursor: pointer;
+        }
+
+        .node circle:hover {
+            fill: #ff6b6b;
+        }
+
+        .node text {
+            fill: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+        }
+
+        .link {
+            stroke: #4a90a4;
+            stroke-opacity: 0.6;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group label {
+            display: block;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .control-group .value-display {
+            color: #e94560;
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #e94560;
+            margin-top: 0.3rem;
+        }
+
+        input[type="number"] {
+            background: #0f0f1a;
+            border: 1px solid #0f3460;
+            border-radius: 4px;
+            color: #eee;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            width: 80px;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+
+        button {
+            background: #e94560;
+            color: #fff;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #ff6b6b;
+        }
+
+        .stats-box {
+            background: #0f0f1a;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid #1a1a3e;
+            font-size: 0.85rem;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+        }
+
+        .stat-value {
+            color: #4ade80;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        .component-colors {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            margin-top: 0.5rem;
+        }
+
+        .component-chip {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        /* BFS tab styles */
+        #bfs-graph-container {
+            width: 100%;
+            height: calc(100% - 3rem);
+            background: #0f0f1a;
+            border-radius: 4px;
+        }
+
+        #bfs-graph-container svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .algo-toggle {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1rem;
+        }
+
+        .algo-toggle button {
+            flex: 1;
+            margin-top: 0;
+            border-radius: 0;
+            background: #0f3460;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            padding: 0.5rem;
+        }
+
+        .algo-toggle button:first-child { border-radius: 4px 0 0 4px; }
+        .algo-toggle button:last-child { border-radius: 0 4px 4px 0; }
+
+        .algo-toggle button.active {
+            background: #e94560;
+            color: #fff;
+        }
+
+        .algo-toggle button:hover:not(.active) {
+            background: #1a4a7a;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-row button {
+            flex: 1;
+        }
+
+        .btn-secondary {
+            background: #0f3460 !important;
+            color: #94a3b8 !important;
+        }
+
+        .btn-secondary:hover {
+            background: #1a4a7a !important;
+        }
+
+        .node-select-hint {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .node-select-hint .selected-node {
+            color: #4ade80;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        .bfs-log {
+            background: #0f0f1a;
+            border-radius: 4px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.75rem;
+            line-height: 1.6;
+        }
+
+        .bfs-log-entry {
+            color: #94a3b8;
+        }
+
+        .bfs-log-entry.source-side { color: #38bdf8; }
+        .bfs-log-entry.target-side { color: #4ade80; }
+        .bfs-log-entry.path-found { color: #fbbf24; font-weight: bold; }
+        .bfs-log-entry.no-path { color: #e94560; }
+
+        .graph-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .graph-btn {
+            background: #0f3460;
+            padding: 0.5rem 1rem;
+            margin-top: 0;
+            width: auto;
+            flex: 1;
+            min-width: fit-content;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .graph-btn.active {
+            background: #e94560;
+            color: #fff;
+        }
+
+        .graph-btn:hover:not(.active) {
+            background: #1a4a7a;
+        }
+
+        #bfs-edge-input {
+            width: 100%;
+            min-height: 120px;
+            background: #0f0f1a;
+            border: 1px solid #0f3460;
+            border-radius: 4px;
+            color: #eee;
+            padding: 0.5rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+        }
+
+        #bfs-edge-input:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+
+        .input-help {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 0.3rem;
+            line-height: 1.4;
+        }
+
+        .bfs-container {
+            height: calc(100vh - 110px);
+        }
+
+        #gw-graph-container {
+            width: 100%;
+            height: calc(100% - 3rem);
+            background: #0f0f1a;
+            border-radius: 4px;
+        }
+
+        #gw-graph-container svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        #cl-graph-container {
+            width: 100%;
+            height: calc(100% - 3rem);
+            background: #0f0f1a;
+            border-radius: 4px;
+        }
+
+        #cl-graph-container svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        #ba-graph-container,
+        #ws-graph-container,
+        #kg-graph-container,
+        #girg-graph-container {
+            width: 100%;
+            height: calc(100% - 3rem);
+            background: #0f0f1a;
+            border-radius: 4px;
+        }
+
+        #ba-graph-container svg,
+        #ws-graph-container svg,
+        #kg-graph-container svg,
+        #girg-graph-container svg {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>CNM Visualizer</h1>
+        <div class="tab-buttons">
+            <button class="tab-btn active" data-tab="renyi" onclick="switchTab('renyi')">Erdos-Renyi</button>
+            <button class="tab-btn" data-tab="bfs" onclick="switchTab('bfs')">Traversal</button>
+            <button class="tab-btn" data-tab="gw" onclick="switchTab('gw')">Galton-Watson</button>
+            <button class="tab-btn" data-tab="cl" onclick="switchTab('cl')">Chung-Lu</button>
+            <button class="tab-btn" data-tab="ba" onclick="switchTab('ba')">Barabasi-Albert</button>
+            <button class="tab-btn" data-tab="ws" onclick="switchTab('ws')">Watts-Strogatz</button>
+            <button class="tab-btn" data-tab="kg" onclick="switchTab('kg')">Kleinberg</button>
+            <button class="tab-btn" data-tab="girg" onclick="switchTab('girg')">GIRG</button>
+        </div>
+    </header>
+
+    <div id="renyi-tab" class="tab-content active">
+        <div class="tab-subtitle">G(n, p) &mdash; Erdos-Renyi Random Graph Model</div>
+        <div class="container">
+            <div class="panel">
+                <h2>Parameters</h2>
+
+                <div class="control-group">
+                    <label>Number of nodes <span class="value-display" id="n-display">10</span></label>
+                    <input type="range" id="n-slider" min="2" max="50" value="10" oninput="updateNDisplay()">
+                </div>
+
+                <div class="control-group">
+                    <label>Edge probability <span class="value-display" id="p-display">0.30</span></label>
+                    <input type="range" id="p-slider" min="0" max="100" value="30" oninput="updatePDisplay()">
+                </div>
+
+                <button onclick="generate()">Generate New Graph</button>
+
+                <div class="stats-box" id="stats-box">
+                    <h2 style="margin-top: 0;">Statistics</h2>
+                    <div id="stats-content">
+                        <p style="color: #94a3b8;">Generate a graph to see statistics</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Graph Visualization</h2>
+                <div id="graph-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="bfs-tab" class="tab-content">
+        <div class="tab-subtitle">Graph Traversal &mdash; BFS, BBFS, DFS, BDFS</div>
+        <div class="container bfs-container">
+            <div class="panel">
+                <h2>Graph Selection</h2>
+                <div id="bfs-graph-buttons" class="graph-buttons"></div>
+
+                <div id="bfs-param-box" class="control-group" style="display: none; margin-top: 0.5rem;">
+                    <label id="bfs-param-label">n = <span class="value-display" id="bfs-param-display">4</span></label>
+                    <input type="range" id="bfs-param-slider" min="2" max="12" value="4" oninput="bfsParamChanged()">
+                </div>
+
+                <h2 style="margin-top: 1rem;">Edge Input</h2>
+                <textarea id="bfs-edge-input" placeholder="Enter edges, one per line:
+(A, B)
+(B, C)
+(A, C)"></textarea>
+                <p class="input-help">
+                    Format: (source, target)<br>
+                    Example: (A, B) creates an edge between A and B
+                </p>
+                <button onclick="bfsUpdateFromInput()">Update Graph</button>
+
+                <h2 style="margin-top: 1.5rem;">Algorithm</h2>
+
+                <div class="algo-toggle">
+                    <button class="active" onclick="bfsSetAlgo('bfs', this)">BFS</button>
+                    <button onclick="bfsSetAlgo('bbfs', this)">BBFS</button>
+                    <button onclick="bfsSetAlgo('dfs', this)">DFS</button>
+                    <button onclick="bfsSetAlgo('bdfs', this)">BDFS</button>
+                </div>
+
+                <div class="node-select-hint" id="bfs-select-hint">
+                    Click nodes in the graph to select <b>source</b> and <b>target</b>.
+                </div>
+
+                <div class="control-group">
+                    <label>Speed <span class="value-display" id="bfs-speed-display">500</span> ms</label>
+                    <input type="range" id="bfs-speed-slider" min="50" max="2000" value="500" step="50" oninput="bfsUpdateSpeedDisplay()">
+                </div>
+
+                <div class="btn-row">
+                    <button onclick="bfsRun()" id="bfs-run-btn">Run</button>
+                    <button onclick="bfsStep()" id="bfs-step-btn">Step</button>
+                    <button class="btn-secondary" onclick="bfsReset()">Reset</button>
+                </div>
+
+                <div class="stats-box" id="bfs-stats-box">
+                    <h2 style="margin-top: 0;">Search Info</h2>
+                    <div id="bfs-stats-content">
+                        <p style="color: #94a3b8;">Select a graph to get started</p>
+                    </div>
+                    <div class="bfs-log" id="bfs-log"></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Graph Visualization</h2>
+                <div id="bfs-graph-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="gw-tab" class="tab-content">
+        <div class="tab-subtitle">Galton-Watson Branching Process &mdash; Poisson offspring distribution</div>
+        <div class="container">
+            <div class="panel">
+                <h2>Parameters</h2>
+
+                <div class="control-group">
+                    <label>&lambda; (mean offspring) <span class="value-display" id="gw-lambda-display">1.00</span></label>
+                    <input type="range" id="gw-lambda-slider" min="0" max="300" value="100" oninput="gwUpdateLambdaDisplay()">
+                </div>
+
+                <div class="control-group">
+                    <label>Max generations <span class="value-display" id="gw-maxgen-display">8</span></label>
+                    <input type="range" id="gw-maxgen-slider" min="1" max="15" value="8" oninput="gwUpdateMaxgenDisplay()">
+                </div>
+
+                <button onclick="gwGenerate()">Generate Tree</button>
+
+                <div class="stats-box">
+                    <h2 style="margin-top: 0;">Statistics</h2>
+                    <div id="gw-stats-content">
+                        <p style="color: #94a3b8;">Generate a tree to see statistics</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Tree Visualization</h2>
+                <div id="gw-graph-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="cl-tab" class="tab-content">
+        <div class="tab-subtitle">Chung-Lu Model &mdash; weighted random graph with power-law degree sequence</div>
+        <div class="container">
+            <div class="panel">
+                <h2>Parameters</h2>
+
+                <div class="control-group">
+                    <label>Number of nodes <span class="value-display" id="cl-n-display">30</span></label>
+                    <input type="range" id="cl-n-slider" min="5" max="100" value="30" oninput="clUpdateNDisplay()">
+                </div>
+
+                <div class="control-group">
+                    <label>&tau; (power-law exponent) <span class="value-display" id="cl-tau-display">2.50</span></label>
+                    <input type="range" id="cl-tau-slider" min="50" max="500" value="250" oninput="clUpdateTauDisplay()">
+                </div>
+
+                <button onclick="clGenerate()">Generate Graph</button>
+
+                <div class="stats-box">
+                    <h2 style="margin-top: 0;">Statistics</h2>
+                    <div id="cl-stats-content">
+                        <p style="color: #94a3b8;">Generate a graph to see statistics</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Graph Visualization</h2>
+                <div id="cl-graph-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ba-tab" class="tab-content">
+        <div class="tab-subtitle">Barabasi-Albert &mdash; preferential attachment, scale-free network</div>
+        <div class="container">
+            <div class="panel">
+                <h2>Parameters</h2>
+
+                <div class="control-group">
+                    <label>Number of nodes (n) <span class="value-display" id="ba-n-display">30</span></label>
+                    <input type="range" id="ba-n-slider" min="3" max="150" value="30" oninput="baUpdateNDisplay()">
+                </div>
+
+                <div class="control-group">
+                    <label>Edges per new node (m) <span class="value-display" id="ba-m-display">2</span></label>
+                    <input type="range" id="ba-m-slider" min="1" max="10" value="2" oninput="baUpdateMDisplay()">
+                </div>
+
+                <button onclick="baGenerate()">Generate New Graph</button>
+
+                <div class="stats-box">
+                    <h2 style="margin-top: 0;">Statistics</h2>
+                    <div id="ba-stats-content">
+                        <p style="color: #94a3b8;">Generate a graph to see statistics</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Graph Visualization</h2>
+                <div id="ba-graph-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ws-tab" class="tab-content">
+        <div class="tab-subtitle">Watts-Strogatz &mdash; small-world model (ring lattice with rewiring)</div>
+        <div class="container">
+            <div class="panel">
+                <h2>Parameters</h2>
+
+                <div class="control-group">
+                    <label>Number of nodes (n) <span class="value-display" id="ws-n-display">20</span></label>
+                    <input type="range" id="ws-n-slider" min="4" max="100" value="20" oninput="wsUpdateNDisplay(); wsParamChanged('n')">
+                </div>
+
+                <div class="control-group">
+                    <label>Neighbors per node (k, even) <span class="value-display" id="ws-k-display">4</span></label>
+                    <input type="range" id="ws-k-slider" min="2" max="20" step="2" value="4" oninput="wsUpdateKDisplay(); wsParamChanged('k')">
+                </div>
+
+                <div class="control-group">
+                    <label>Rewiring probability (&beta;) <span class="value-display" id="ws-p-display">0.100</span></label>
+                    <input type="range" id="ws-p-slider" min="0" max="200" value="20" oninput="wsUpdatePDisplay(); wsParamChanged('p')">
+                </div>
+
+                <button onclick="wsGenerate()">Generate New Graph</button>
+
+                <div class="control-group" style="margin-top: 1rem;">
+                    <label>
+                        <input type="checkbox" id="ws-delta-toggle" onchange="wsToggleDelta()" style="accent-color: #e94560; margin-right: 0.4rem; vertical-align: middle;">
+                        Show &Delta;-cube around target
+                    </label>
+                    <p class="input-help">T = min(n<sup>1/d</sup>, p<sup>-1/(d+1)</sup>) with d = k/2; &Delta; = T/4. Manhattan distance on ring.<br>Click a node for <b>source</b>, then another for <b>target</b>.</p>
+                </div>
+
+                <button class="btn-secondary" id="ws-pick-st-btn" onclick="wsPickST()" style="display: none;">Re-pick s, t (random)</button>
+
+                <div class="stats-box">
+                    <h2 style="margin-top: 0;">Statistics</h2>
+                    <div id="ws-stats-content">
+                        <p style="color: #94a3b8;">Generate a graph to see statistics</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Graph Visualization</h2>
+                <div id="ws-graph-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="kg-tab" class="tab-content">
+        <div class="tab-subtitle">Kleinberg Model &mdash; ring lattice with rewiring weighted by ring distance<sup>&minus;r</sup></div>
+        <div class="container">
+            <div class="panel">
+                <h2>Parameters</h2>
+
+                <div class="control-group">
+                    <label>Number of nodes (n) <span class="value-display" id="kg-n-display">20</span></label>
+                    <input type="range" id="kg-n-slider" min="4" max="100" value="20" oninput="kgUpdateNDisplay(); kgParamChanged('n')">
+                </div>
+
+                <div class="control-group">
+                    <label>Neighbors per node (k, even) <span class="value-display" id="kg-k-display">4</span></label>
+                    <input type="range" id="kg-k-slider" min="2" max="20" step="2" value="4" oninput="kgUpdateKDisplay(); kgParamChanged('k')">
+                </div>
+
+                <div class="control-group">
+                    <label>Rewiring probability (&beta;) <span class="value-display" id="kg-beta-display">0.100</span></label>
+                    <input type="range" id="kg-beta-slider" min="0" max="200" value="20" oninput="kgUpdateBetaDisplay(); kgParamChanged('beta')">
+                </div>
+
+                <div class="control-group">
+                    <label>Clustering exponent (r) <span class="value-display" id="kg-r-display">2.00</span></label>
+                    <input type="range" id="kg-r-slider" min="0" max="500" value="200" oninput="kgUpdateRDisplay(); kgParamChanged('r')">
+                </div>
+
+                <button onclick="kgGenerate()">Generate New Graph</button>
+
+                <div class="control-group" style="margin-top: 1rem;">
+                    <label>
+                        <input type="checkbox" id="kg-delta-toggle" onchange="kgToggleDelta()" style="accent-color: #e94560; margin-right: 0.4rem; vertical-align: middle;">
+                        Show &Delta;-cube around target
+                    </label>
+                    <p class="input-help">T = min(n<sup>1/d</sup>, &beta;<sup>-1/(d+1)</sup>) with d = k/2; &Delta; = T/4. Manhattan distance on ring.</p>
+                </div>
+
+                <div class="control-group" style="margin-top: 0.5rem;">
+                    <label>
+                        <input type="checkbox" id="kg-annuli-toggle" onchange="kgToggleAnnuli()" style="accent-color: #e94560; margin-right: 0.4rem; vertical-align: middle;">
+                        Show annuli around target
+                    </label>
+                    <p class="input-help">A<sub>r</sub>(t) = {u : r &le; dist(u, t) &lt; 2r}, for r &in; {1, 2, 4, ..., 2<sup>s</sup>} with s = &lfloor;log<sub>2</sub>(n/2)&rfloor;.</p>
+                </div>
+
+                <p class="input-help" style="margin-top: 0.3rem;">Click a node for <b>source</b>, then another for <b>target</b>.</p>
+                <button class="btn-secondary" id="kg-pick-st-btn" onclick="kgPickST()" style="display: none;">Re-pick s, t (random)</button>
+
+                <div class="stats-box">
+                    <h2 style="margin-top: 0;">Statistics</h2>
+                    <div id="kg-stats-content">
+                        <p style="color: #94a3b8;">Generate a graph to see statistics</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Graph Visualization</h2>
+                <div id="kg-graph-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="girg-tab" class="tab-content">
+        <div class="tab-subtitle">GIRG &mdash; Geometric Inhomogeneous Random Graphs on the d-torus (ring layout)</div>
+        <div class="container">
+            <div class="panel">
+                <h2>Parameters</h2>
+
+                <div class="control-group">
+                    <label>Number of nodes (n) <span class="value-display" id="girg-n-display">60</span></label>
+                    <input type="range" id="girg-n-slider" min="10" max="300" value="60" oninput="girgUpdateNDisplay(); girgParamChanged('n')">
+                </div>
+
+                <div class="control-group">
+                    <label>&tau; (weight power-law) <span class="value-display" id="girg-tau-display">2.50</span></label>
+                    <input type="range" id="girg-tau-slider" min="205" max="500" value="250" oninput="girgUpdateTauDisplay(); girgParamChanged('tau')">
+                </div>
+
+                <div class="control-group">
+                    <label>&alpha; (temperature) <span class="value-display" id="girg-alpha-display">1.50</span></label>
+                    <input type="range" id="girg-alpha-slider" min="105" max="2000" value="150" oninput="girgUpdateAlphaDisplay(); girgParamChanged('alpha')">
+                </div>
+
+                <div class="control-group">
+                    <label>Dimension (d) <span class="value-display" id="girg-dim-display">1</span></label>
+                    <input type="range" id="girg-dim-slider" min="1" max="6" value="1" step="1" oninput="girgUpdateDimDisplay(); girgParamChanged('dim')">
+                </div>
+
+                <div class="control-group">
+                    <label>Edge constant (c) <span class="value-display" id="girg-c-display">1.0</span></label>
+                    <input type="range" id="girg-c-slider" min="10" max="500" value="100" oninput="girgUpdateCDisplay(); girgParamChanged('c')">
+                    <p class="input-help">p<sub>uv</sub> = min(1, c &middot; (w<sub>u</sub>w<sub>v</sub> / (W &middot; d(u,v)<sup>d</sup>))<sup>&alpha;</sup>) on the d-torus (L<sub>&infin;</sub>). Nodes are placed on the ring sorted by their first coordinate.</p>
+                </div>
+
+                <button onclick="girgGenerate()">Generate New Graph</button>
+
+                <div class="control-group" style="margin-top: 1rem;">
+                    <label>
+                        <input type="checkbox" id="girg-delta-toggle" onchange="girgToggleDelta()" style="accent-color: #e94560; margin-right: 0.4rem; vertical-align: middle;">
+                        Show &Delta;-cube around target
+                    </label>
+                    <p class="input-help">T = n<sup>1/d</sup>; &Delta; = T/4. Ring distance on the visualization ring.</p>
+                </div>
+
+                <div class="control-group" style="margin-top: 0.5rem;">
+                    <label>
+                        <input type="checkbox" id="girg-annuli-toggle" onchange="girgToggleAnnuli()" style="accent-color: #e94560; margin-right: 0.4rem; vertical-align: middle;">
+                        Show annuli around target
+                    </label>
+                    <p class="input-help">A<sub>r</sub>(t) = {u : r &le; ringDist(u, t) &lt; 2r}, for r &in; {1, 2, 4, ..., 2<sup>s</sup>}.</p>
+                </div>
+
+                <div class="control-group" style="margin-top: 0.5rem;">
+                    <label>
+                        <input type="checkbox" id="girg-ball-toggle" onchange="girgToggleBall()" style="accent-color: #e94560; margin-right: 0.4rem; vertical-align: middle;">
+                        Show ball of influence for s, t
+                    </label>
+                    <p class="input-help">Radius r = w<sup>1/d</sup> (in ring positions, capped at n/2).</p>
+                </div>
+
+                <p class="input-help" style="margin-top: 0.3rem;">Click a node for <b>source</b>, then another for <b>target</b>.</p>
+                <button class="btn-secondary" id="girg-pick-st-btn" onclick="girgPickST()" style="display: none;">Re-pick s, t (random)</button>
+
+                <div class="stats-box">
+                    <h2 style="margin-top: 0;">Statistics</h2>
+                    <div id="girg-stats-content">
+                        <p style="color: #94a3b8;">Generate a graph to see statistics</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Graph Visualization</h2>
+                <div id="girg-graph-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =====================
+        // PARAMETER CONTROLS
+        // =====================
+        function getN() {
+            return parseInt(document.getElementById('n-slider').value);
+        }
+
+        function getP() {
+            return parseInt(document.getElementById('p-slider').value) / 100;
+        }
+
+        function updateNDisplay() {
+            document.getElementById('n-display').textContent = getN();
+        }
+
+        function updatePDisplay() {
+            document.getElementById('p-display').textContent = getP().toFixed(2);
+        }
+
+        // =====================
+        // GRAPH GENERATION
+        // =====================
+        function indexToLabel(i) {
+            let label = '';
+            do {
+                label = String.fromCharCode(65 + (i % 26)) + label;
+                i = Math.floor(i / 26) - 1;
+            } while (i >= 0);
+            return label;
+        }
+
+        function generateErdosRenyi(n, p) {
+            const nodes = [];
+            for (let i = 0; i < n; i++) {
+                nodes.push({ id: i, label: indexToLabel(i) });
+            }
+
+            const edges = [];
+            for (let i = 0; i < n; i++) {
+                for (let j = i + 1; j < n; j++) {
+                    if (Math.random() < p) {
+                        edges.push({ source: i, target: j });
+                    }
+                }
+            }
+
+            return { nodes, edges };
+        }
+
+        // =====================
+        // GRAPH STATISTICS
+        // =====================
+        function computeStats(nodes, edges) {
+            const n = nodes.length;
+            const m = edges.length;
+            const maxEdges = n * (n - 1) / 2;
+
+            // Build adjacency list
+            const adj = new Map();
+            nodes.forEach(node => adj.set(node.id, []));
+            edges.forEach(e => {
+                const sid = typeof e.source === 'object' ? e.source.id : e.source;
+                const tid = typeof e.target === 'object' ? e.target.id : e.target;
+                adj.get(sid).push(tid);
+                adj.get(tid).push(sid);
+            });
+
+            // Find connected components via BFS
+            const visited = new Set();
+            const components = [];
+
+            nodes.forEach(node => {
+                if (!visited.has(node.id)) {
+                    const component = [];
+                    const queue = [node.id];
+                    visited.add(node.id);
+
+                    while (queue.length > 0) {
+                        const curr = queue.shift();
+                        component.push(curr);
+                        for (const neighbor of adj.get(curr)) {
+                            if (!visited.has(neighbor)) {
+                                visited.add(neighbor);
+                                queue.push(neighbor);
+                            }
+                        }
+                    }
+                    components.push(component);
+                }
+            });
+
+            // Sort components by size (descending)
+            components.sort((a, b) => b.length - a.length);
+
+            // Degree stats
+            const degrees = nodes.map(node => adj.get(node.id).length);
+            const avgDegree = degrees.length > 0 ? degrees.reduce((a, b) => a + b, 0) / degrees.length : 0;
+            const maxDegree = degrees.length > 0 ? Math.max(...degrees) : 0;
+            const minDegree = degrees.length > 0 ? Math.min(...degrees) : 0;
+            const isolatedNodes = degrees.filter(d => d === 0).length;
+
+            return {
+                n,
+                m,
+                maxEdges,
+                density: maxEdges > 0 ? m / maxEdges : 0,
+                numComponents: components.length,
+                components,
+                largestComponent: components.length > 0 ? components[0].length : 0,
+                avgDegree,
+                maxDegree,
+                minDegree,
+                isolatedNodes,
+            };
+        }
+
+        function renderStats(stats) {
+            const p = getP();
+            const n = stats.n;
+
+            let html = '';
+
+            html += `<div class="stat-row"><span class="stat-label">Nodes (n)</span><span class="stat-value">${stats.n}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Edges</span><span class="stat-value">${stats.m} / ${stats.maxEdges}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Density</span><span class="stat-value">${stats.density.toFixed(3)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Avg degree</span><span class="stat-value">${stats.avgDegree.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Min / Max degree</span><span class="stat-value">${stats.minDegree} / ${stats.maxDegree}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Isolated nodes</span><span class="stat-value">${stats.isolatedNodes}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Components</span><span class="stat-value">${stats.numComponents}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Largest component</span><span class="stat-value">${stats.largestComponent}</span></div>`;
+
+            // Expected values
+            html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+            html += `<div class="stat-row"><span class="stat-label">E[edges]</span><span class="stat-value">${(stats.maxEdges * p).toFixed(1)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">E[degree]</span><span class="stat-value">${((n - 1) * p).toFixed(2)}</span></div>`;
+
+            // Phase transition info
+            const threshold = 1 / n;
+            const logThreshold = Math.log(n) / n;
+            html += '<div style="margin-top: 0.8rem; font-size: 0.8rem; color: #94a3b8; line-height: 1.5;">';
+            html += `<div>Giant component threshold: p = 1/n = ${threshold.toFixed(4)}</div>`;
+            html += `<div>Connectivity threshold: p = ln(n)/n = ${logThreshold.toFixed(4)}</div>`;
+            if (p < threshold) {
+                html += '<div style="color: #f59e0b; margin-top: 0.3rem;">Below giant component threshold</div>';
+            } else if (p < logThreshold) {
+                html += '<div style="color: #38bdf8; margin-top: 0.3rem;">Giant component likely exists</div>';
+            } else {
+                html += '<div style="color: #4ade80; margin-top: 0.3rem;">Graph is likely connected</div>';
+            }
+            html += '</div></div>';
+
+            // Component sizes
+            if (stats.components.length > 1) {
+                html += '<div style="margin-top: 0.8rem;">';
+                html += '<div class="stat-label" style="margin-bottom: 0.3rem;">Component sizes:</div>';
+                html += '<div class="component-colors">';
+                stats.components.forEach((comp, i) => {
+                    const color = componentColor(i);
+                    html += `<span class="component-chip" style="background: ${color}; color: #fff;">${comp.length}</span>`;
+                });
+                html += '</div></div>';
+            }
+
+            document.getElementById('stats-content').innerHTML = html;
+        }
+
+        // =====================
+        // COMPONENT COLORS
+        // =====================
+        const COMPONENT_PALETTE = [
+            '#e94560', '#4a90a4', '#4ade80', '#f59e0b', '#a78bfa',
+            '#f472b6', '#38bdf8', '#fb923c', '#34d399', '#c084fc',
+            '#94a3b8', '#fbbf24', '#67e8f9', '#fb7185', '#a3e635',
+        ];
+
+        function componentColor(index) {
+            return COMPONENT_PALETTE[index % COMPONENT_PALETTE.length];
+        }
+
+        // =====================
+        // D3 VISUALIZATION
+        // =====================
+        function drawGraph(graphData, stats) {
+            const container = document.getElementById('graph-container');
+            container.innerHTML = '';
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            const svg = d3.select('#graph-container')
+                .append('svg')
+                .attr('viewBox', [0, 0, width, height]);
+
+            // Build node-to-component map
+            const nodeComponent = new Map();
+            stats.components.forEach((comp, i) => {
+                comp.forEach(nodeId => nodeComponent.set(nodeId, i));
+            });
+
+            const nodes = graphData.nodes.map(n => ({
+                ...n,
+                componentIndex: nodeComponent.get(n.id) || 0
+            }));
+
+            const links = graphData.edges.map(e => ({ ...e }));
+
+            // Adjust forces based on graph size
+            const n = nodes.length;
+            const chargeStrength = n > 30 ? -150 : n > 15 ? -250 : -350;
+            const linkDist = n > 30 ? 40 : n > 15 ? 60 : 80;
+            const nodeRadius = n > 30 ? 12 : n > 15 ? 18 : 22;
+            const fontSize = n > 30 ? '8px' : n > 15 ? '10px' : '12px';
+
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(linkDist))
+                .force('charge', d3.forceManyBody().strength(chargeStrength))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(nodeRadius + 2));
+
+            // Draw links
+            const link = svg.append('g')
+                .selectAll('line')
+                .data(links)
+                .join('line')
+                .attr('class', 'link')
+                .attr('stroke-width', 1.5);
+
+            // Draw nodes
+            const node = svg.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .join('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            node.append('circle')
+                .attr('r', nodeRadius)
+                .style('fill', d => componentColor(d.componentIndex));
+
+            node.append('text')
+                .text(d => d.label)
+                .style('font-size', fontSize);
+
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+        }
+
+        // =====================
+        // TAB SWITCHING
+        // =====================
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + '-tab').classList.add('active');
+
+            if (tabName === 'bfs') {
+                setTimeout(() => {
+                    if (!bfsState.graphData) bfsSelectPreset('bridge');
+                }, 50);
+            }
+        }
+
+        // =====================
+        // MAIN (Erdos-Renyi tab)
+        // =====================
+        let currentGraphData = null;
+
+        function generate() {
+            const n = getN();
+            const p = getP();
+            const graphData = generateErdosRenyi(n, p);
+            currentGraphData = graphData;
+            const stats = computeStats(graphData.nodes, graphData.edges);
+            renderStats(stats);
+            drawGraph(graphData, stats);
+            // Push to traversal tab
+            bfsSelectPreset('er');
+        }
+
+        window.onload = () => {
+            generate();
+            bfsRenderGraphButtons();
+        };
+
+        window.onresize = () => {
+            generate();
+        };
+
+        // =========================================
+        // BFS / BBFS TAB
+        // =========================================
+        const bfsState = {
+            graphData: null,
+            adj: null,
+            sourceNode: null,
+            targetNode: null,
+            algo: 'bfs',
+            // animation
+            steps: [],
+            stepIndex: 0,
+            running: false,
+            timer: null,
+            // d3 refs
+            svgNodeSel: null,
+            svgLinkSel: null,
+            simulation: null,
+        };
+
+        // --- Controls ---
+        function bfsUpdateSpeedDisplay() {
+            document.getElementById('bfs-speed-display').textContent =
+                document.getElementById('bfs-speed-slider').value;
+        }
+        function bfsSetAlgo(algo, btn) {
+            bfsState.algo = algo;
+            document.querySelectorAll('.algo-toggle button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            bfsReset();
+        }
+        function bfsGetSpeed() {
+            return parseInt(document.getElementById('bfs-speed-slider').value);
+        }
+
+        // --- Preset graphs ---
+        const BFS_PRESETS = {
+            bridge: {
+                label: 'Bridge',
+                edges: '(A, B)\n(B, C)\n(C, A)\n(D, E)\n(E, F)\n(F, D)\n(C, D)'
+            },
+            fully_connected: {
+                label: 'Kn',
+                param: { name: 'n', min: 2, max: 12, default: 4 },
+                generate(n) {
+                    const lines = [];
+                    for (let i = 0; i < n; i++)
+                        for (let j = i + 1; j < n; j++)
+                            lines.push(`(${indexToLabel(i)}, ${indexToLabel(j)})`);
+                    return lines.join('\n');
+                }
+            },
+            hamiltonian: {
+                label: 'Cycle',
+                param: { name: 'n', min: 3, max: 12, default: 5 },
+                generate(n) {
+                    const lines = [];
+                    for (let i = 0; i < n; i++)
+                        lines.push(`(${indexToLabel(i)}, ${indexToLabel((i + 1) % n)})`);
+                    return lines.join('\n');
+                }
+            },
+            knn: {
+                label: 'Kn,n',
+                param: { name: 'n', min: 2, max: 8, default: 3 },
+                generate(n) {
+                    const lines = [];
+                    for (let i = 0; i < n; i++)
+                        for (let j = 0; j < n; j++)
+                            lines.push(`(${indexToLabel(i)}, ${indexToLabel(n + j)})`);
+                    return lines.join('\n');
+                }
+            },
+            petersen: {
+                label: 'Petersen',
+                edges: '(A, B)\n(B, C)\n(C, D)\n(D, E)\n(E, A)\n(F, H)\n(H, J)\n(J, G)\n(G, I)\n(I, F)\n(A, F)\n(B, G)\n(C, H)\n(D, I)\n(E, J)'
+            },
+            star: {
+                label: 'Star',
+                edges: '(A, B)\n(A, C)\n(A, D)\n(A, E)'
+            },
+            wheel: {
+                label: 'Wheel',
+                edges: '(A, B)\n(A, C)\n(A, D)\n(A, E)\n(A, F)\n(B, C)\n(C, D)\n(D, E)\n(E, F)\n(F, B)'
+            },
+            er: {
+                label: 'From ER tab',
+                edges: null
+            },
+        };
+
+        let bfsCurrentPreset = null;
+
+        function bfsRenderGraphButtons() {
+            const container = document.getElementById('bfs-graph-buttons');
+            container.innerHTML = '';
+            for (const [key, preset] of Object.entries(BFS_PRESETS)) {
+                const btn = document.createElement('button');
+                btn.className = 'graph-btn' + (key === bfsCurrentPreset ? ' active' : '');
+                btn.textContent = preset.label;
+                btn.onclick = () => bfsSelectPreset(key);
+                container.appendChild(btn);
+            }
+        }
+
+        function bfsSelectPreset(key) {
+            bfsCurrentPreset = key;
+            bfsRenderGraphButtons();
+
+            const preset = BFS_PRESETS[key];
+            const paramBox = document.getElementById('bfs-param-box');
+
+            // Show/hide parameter slider
+            if (preset.param) {
+                const p = preset.param;
+                const slider = document.getElementById('bfs-param-slider');
+                slider.min = p.min;
+                slider.max = p.max;
+                slider.value = p.default;
+                document.getElementById('bfs-param-display').textContent = p.default;
+                document.getElementById('bfs-param-label').innerHTML =
+                    p.name + ' = <span class="value-display" id="bfs-param-display">' + p.default + '</span>';
+                paramBox.style.display = 'block';
+                document.getElementById('bfs-edge-input').value = preset.generate(p.default);
+            } else {
+                paramBox.style.display = 'none';
+                if (key === 'er') {
+                    if (currentGraphData) {
+                        const nodeLabel = new Map(currentGraphData.nodes.map(n => [n.id, n.label]));
+                        const lines = currentGraphData.edges.map(e => {
+                            const s = typeof e.source === 'object' ? e.source.id : e.source;
+                            const t = typeof e.target === 'object' ? e.target.id : e.target;
+                            return `(${nodeLabel.get(s) || s}, ${nodeLabel.get(t) || t})`;
+                        });
+                        document.getElementById('bfs-edge-input').value = lines.join('\n');
+                    } else {
+                        document.getElementById('bfs-edge-input').value = '';
+                    }
+                } else {
+                    document.getElementById('bfs-edge-input').value = preset.edges;
+                }
+            }
+            bfsUpdateFromInput();
+        }
+
+        function bfsParamChanged() {
+            const val = parseInt(document.getElementById('bfs-param-slider').value);
+            document.getElementById('bfs-param-display').textContent = val;
+            // Also update the label's inner span
+            const label = document.getElementById('bfs-param-label');
+            const preset = BFS_PRESETS[bfsCurrentPreset];
+            if (preset && preset.generate) {
+                document.getElementById('bfs-edge-input').value = preset.generate(val);
+                bfsUpdateFromInput();
+            }
+        }
+
+        // --- Edge parsing ---
+        function bfsParseEdges(text) {
+            const edges = [];
+            const nodeSet = new Set();
+            const lines = text.trim().split('\n');
+            for (const line of lines) {
+                const match = line.match(/\(\s*(\w+)\s*,\s*(\w+)\s*\)/);
+                if (match) {
+                    nodeSet.add(match[1]);
+                    nodeSet.add(match[2]);
+                    edges.push({ source: match[1], target: match[2] });
+                }
+            }
+            const nodes = [...nodeSet].map(id => ({ id, label: id }));
+            return { nodes, edges };
+        }
+
+        function bfsUpdateFromInput() {
+            bfsStopAnimation();
+            const text = document.getElementById('bfs-edge-input').value;
+            const parsed = bfsParseEdges(text);
+
+            bfsState.graphData = parsed;
+            bfsState.sourceNode = null;
+            bfsState.targetNode = null;
+            bfsState.steps = [];
+            bfsState.stepIndex = 0;
+
+            // Build adjacency list
+            bfsState.adj = new Map();
+            parsed.nodes.forEach(node => bfsState.adj.set(node.id, []));
+            parsed.edges.forEach(e => {
+                bfsState.adj.get(e.source).push(e.target);
+                bfsState.adj.get(e.target).push(e.source);
+            });
+
+            bfsDrawGraph();
+            bfsUpdateHint();
+            bfsUpdateStats();
+            document.getElementById('bfs-log').innerHTML = '';
+        }
+
+        function bfsDrawGraph() {
+            const container = document.getElementById('bfs-graph-container');
+            container.innerHTML = '';
+
+            const width = container.clientWidth || 800;
+            const height = container.clientHeight || 500;
+
+            const svg = d3.select('#bfs-graph-container')
+                .append('svg')
+                .attr('viewBox', [0, 0, width, height]);
+
+            const gd = bfsState.graphData;
+            const nodes = gd.nodes.map(n => ({ ...n }));
+            const links = gd.edges.map(e => ({ ...e }));
+
+            const n = nodes.length;
+            const chargeStrength = n > 30 ? -150 : n > 15 ? -250 : -350;
+            const linkDist = n > 30 ? 40 : n > 15 ? 60 : 80;
+            const nodeRadius = n > 30 ? 12 : n > 15 ? 18 : 22;
+            const fontSize = n > 30 ? '8px' : n > 15 ? '10px' : '12px';
+
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(linkDist))
+                .force('charge', d3.forceManyBody().strength(chargeStrength))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(nodeRadius + 2));
+
+            const linkSel = svg.append('g')
+                .selectAll('line')
+                .data(links)
+                .join('line')
+                .attr('class', 'link')
+                .attr('stroke-width', 1.5);
+
+            const nodeSel = svg.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .join('g')
+                .attr('class', 'node')
+                .style('cursor', 'pointer')
+                .call(d3.drag()
+                    .on('start', (event) => {
+                        event.subject._dragged = false;
+                        if (!event.active) simulation.alphaTarget(0.3).restart();
+                        event.subject.fx = event.subject.x;
+                        event.subject.fy = event.subject.y;
+                    })
+                    .on('drag', (event) => {
+                        event.subject._dragged = true;
+                        event.subject.fx = event.x;
+                        event.subject.fy = event.y;
+                    })
+                    .on('end', (event) => {
+                        if (!event.active) simulation.alphaTarget(0);
+                        event.subject.fx = null;
+                        event.subject.fy = null;
+                        if (!event.subject._dragged) {
+                            bfsNodeClicked(event.subject.id);
+                        }
+                    }));
+
+            nodeSel.append('circle')
+                .attr('r', nodeRadius)
+                .style('fill', '#94a3b8')
+                .style('stroke', '#fff')
+                .style('stroke-width', '2px');
+
+            nodeSel.append('text')
+                .text(d => d.label)
+                .style('font-size', fontSize)
+                .style('fill', '#fff')
+                .style('font-weight', 'bold')
+                .style('text-anchor', 'middle')
+                .style('dominant-baseline', 'central')
+                .style('pointer-events', 'none');
+
+            simulation.on('tick', () => {
+                linkSel
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+                nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+
+            bfsState.svgNodeSel = nodeSel;
+            bfsState.svgLinkSel = linkSel;
+            bfsState.simulation = simulation;
+        }
+
+        // --- Node selection ---
+        function bfsNodeClicked(nodeId) {
+            if (bfsState.running) return;
+            if (bfsState.steps.length > 0) return; // already computed, reset first
+
+            if (bfsState.sourceNode === null) {
+                bfsState.sourceNode = nodeId;
+            } else if (bfsState.targetNode === null && nodeId !== bfsState.sourceNode) {
+                bfsState.targetNode = nodeId;
+            } else {
+                // re-select: reset selection
+                bfsState.sourceNode = nodeId;
+                bfsState.targetNode = null;
+            }
+            bfsUpdateHint();
+            bfsColorNodes();
+        }
+
+        function bfsUpdateHint() {
+            const el = document.getElementById('bfs-select-hint');
+            const s = bfsState.sourceNode;
+            const t = bfsState.targetNode;
+            if (s === null) {
+                el.innerHTML = 'Click a node to select <b>source</b>.';
+            } else if (t === null) {
+                el.innerHTML = `Source: <span class="selected-node">${s}</span>. Click another node for <b>target</b>.`;
+            } else {
+                el.innerHTML = `Source: <span class="selected-node">${s}</span> &rarr; Target: <span class="selected-node">${t}</span>`;
+            }
+        }
+
+        function bfsColorNodes() {
+            if (!bfsState.svgNodeSel) return;
+            bfsState.svgNodeSel.select('circle')
+                .style('fill', d => {
+                    if (d.id === bfsState.sourceNode) return '#38bdf8';
+                    if (d.id === bfsState.targetNode) return '#4ade80';
+                    return '#94a3b8';
+                })
+                .style('stroke-width', d => {
+                    if (d.id === bfsState.sourceNode || d.id === bfsState.targetNode) return '3px';
+                    return '2px';
+                });
+            bfsState.svgLinkSel
+                .style('stroke', '#4a90a4')
+                .style('stroke-opacity', 0.6)
+                .style('stroke-width', '1.5px');
+        }
+
+        // --- BFS algorithm (records steps) ---
+        function bfsCompute(source, target, adj) {
+            const steps = [];
+            const visited = new Set();
+            const parent = new Map();
+            const queue = [source];
+            visited.add(source);
+            steps.push({ type: 'start', node: source, side: 'source' });
+
+            while (queue.length > 0) {
+                const curr = queue.shift();
+                steps.push({ type: 'visit', node: curr, side: 'source' });
+
+                if (curr === target) {
+                    // Reconstruct path
+                    const path = [];
+                    let n = target;
+                    while (n !== undefined) {
+                        path.unshift(n);
+                        n = parent.get(n);
+                    }
+                    steps.push({ type: 'found', path });
+                    return steps;
+                }
+
+                for (const neighbor of adj.get(curr)) {
+                    if (!visited.has(neighbor)) {
+                        visited.add(neighbor);
+                        parent.set(neighbor, curr);
+                        queue.push(neighbor);
+                        steps.push({ type: 'discover', node: neighbor, from: curr, side: 'source' });
+                    }
+                }
+            }
+
+            steps.push({ type: 'not_found' });
+            return steps;
+        }
+
+        // --- BBFS algorithm (records steps) ---
+        function bbfsCompute(source, target, adj) {
+            const steps = [];
+            const Q = [[], []]; // Q[0] from source, Q[1] from target
+            const D = [new Set(), new Set()]; // discovered
+            const V = [new Set(), new Set()]; // visited
+            const parent = [new Map(), new Map()]; // parent[side].get(node) = parent node
+
+            Q[0].push(source);
+            Q[1].push(target);
+            D[0].add(source);
+            D[1].add(target);
+
+            steps.push({ type: 'start', node: source, side: 'source' });
+            steps.push({ type: 'start', node: target, side: 'target' });
+
+            let minDist = Infinity;
+            let meetNode = null;
+
+            let side = 0; // alternate sides
+            let maxIter = adj.size * adj.size; // safety
+
+            while (Q[0].length > 0 || Q[1].length > 0) {
+                if (--maxIter < 0) break;
+
+                // Pick side with smaller queue (or whichever has items)
+                if (Q[side].length === 0) side = 1 - side;
+                if (Q[side].length === 0) break;
+
+                const w = Q[side].shift();
+
+                if (V[side].has(w)) {
+                    side = 1 - side;
+                    continue;
+                }
+
+                V[side].add(w);
+                const sideName = side === 0 ? 'source' : 'target';
+                steps.push({ type: 'visit', node: w, side: sideName });
+
+                if (V[1 - side].has(w)) {
+                    // Both sides visited this node - reconstruct path
+                    const path = bbfsReconstructPath(w, parent, source, target);
+                    steps.push({ type: 'found', path, meet: w });
+                    return steps;
+                }
+
+                for (const neighbor of adj.get(w)) {
+                    if (!D[side].has(neighbor)) {
+                        D[side].add(neighbor);
+                        parent[side].set(neighbor, w);
+                        Q[side].push(neighbor);
+                        steps.push({ type: 'discover', node: neighbor, from: w, side: sideName });
+
+                        // Check if discovered by other side too
+                        if (D[1 - side].has(neighbor)) {
+                            // Potential meeting - compute path length
+                            const pathCandidate = bbfsReconstructPath(neighbor, parent, source, target);
+                            if (pathCandidate.length < minDist) {
+                                minDist = pathCandidate.length;
+                                meetNode = neighbor;
+                            }
+                        }
+                    }
+                }
+
+                // If we found a meeting and current BFS layer is done
+                if (meetNode !== null) {
+                    const path = bbfsReconstructPath(meetNode, parent, source, target);
+                    steps.push({ type: 'found', path, meet: meetNode });
+                    return steps;
+                }
+
+                side = 1 - side; // alternate
+            }
+
+            steps.push({ type: 'not_found' });
+            return steps;
+        }
+
+        function bbfsReconstructPath(meetNode, parent, source, target) {
+            // Path from source to meetNode
+            const pathA = [];
+            let n = meetNode;
+            while (n !== undefined) {
+                pathA.unshift(n);
+                n = parent[0].get(n);
+            }
+            // Path from meetNode to target
+            n = parent[1].get(meetNode);
+            while (n !== undefined) {
+                pathA.push(n);
+                n = parent[1].get(n);
+            }
+            return pathA;
+        }
+
+        // --- DFS algorithm (records steps) ---
+        function dfsCompute(source, target, adj) {
+            const steps = [];
+            const visited = new Set();
+            const parent = new Map();
+            const stack = [source];
+            visited.add(source);
+            steps.push({ type: 'start', node: source, side: 'source' });
+
+            while (stack.length > 0) {
+                const curr = stack.pop();
+                steps.push({ type: 'visit', node: curr, side: 'source' });
+
+                if (curr === target) {
+                    const path = [];
+                    let n = target;
+                    while (n !== undefined) {
+                        path.unshift(n);
+                        n = parent.get(n);
+                    }
+                    steps.push({ type: 'found', path });
+                    return steps;
+                }
+
+                for (const neighbor of adj.get(curr)) {
+                    if (!visited.has(neighbor)) {
+                        visited.add(neighbor);
+                        parent.set(neighbor, curr);
+                        stack.push(neighbor);
+                        steps.push({ type: 'discover', node: neighbor, from: curr, side: 'source' });
+                    }
+                }
+            }
+
+            steps.push({ type: 'not_found' });
+            return steps;
+        }
+
+        // --- BDFS algorithm (bidirectional DFS, records steps) ---
+        function bdfsCompute(source, target, adj) {
+            const steps = [];
+            const S = [[], []]; // stacks
+            const D = [new Set(), new Set()];
+            const V = [new Set(), new Set()];
+            const parent = [new Map(), new Map()];
+
+            S[0].push(source);
+            S[1].push(target);
+            D[0].add(source);
+            D[1].add(target);
+
+            steps.push({ type: 'start', node: source, side: 'source' });
+            steps.push({ type: 'start', node: target, side: 'target' });
+
+            let side = 0;
+            let maxIter = adj.size * adj.size;
+
+            while (S[0].length > 0 || S[1].length > 0) {
+                if (--maxIter < 0) break;
+
+                if (S[side].length === 0) side = 1 - side;
+                if (S[side].length === 0) break;
+
+                const w = S[side].pop();
+
+                if (V[side].has(w)) {
+                    side = 1 - side;
+                    continue;
+                }
+
+                V[side].add(w);
+                const sideName = side === 0 ? 'source' : 'target';
+                steps.push({ type: 'visit', node: w, side: sideName });
+
+                if (V[1 - side].has(w)) {
+                    const path = bbfsReconstructPath(w, parent, source, target);
+                    steps.push({ type: 'found', path, meet: w });
+                    return steps;
+                }
+
+                for (const neighbor of adj.get(w)) {
+                    if (!D[side].has(neighbor)) {
+                        D[side].add(neighbor);
+                        parent[side].set(neighbor, w);
+                        S[side].push(neighbor);
+                        steps.push({ type: 'discover', node: neighbor, from: w, side: sideName });
+
+                        if (D[1 - side].has(neighbor)) {
+                            const path = bbfsReconstructPath(neighbor, parent, source, target);
+                            steps.push({ type: 'found', path, meet: neighbor });
+                            return steps;
+                        }
+                    }
+                }
+
+                side = 1 - side;
+            }
+
+            steps.push({ type: 'not_found' });
+            return steps;
+        }
+
+        // --- Algorithm dispatch ---
+        function bfsDispatchAlgo(algo, source, target, adj) {
+            switch (algo) {
+                case 'bfs': return bfsCompute(source, target, adj);
+                case 'bbfs': return bbfsCompute(source, target, adj);
+                case 'dfs': return dfsCompute(source, target, adj);
+                case 'bdfs': return bdfsCompute(source, target, adj);
+            }
+        }
+
+        // --- Animation ---
+        function bfsRun() {
+            if (bfsState.running) {
+                bfsStopAnimation();
+                return;
+            }
+
+            if (bfsState.sourceNode === null || bfsState.targetNode === null) {
+                document.getElementById('bfs-select-hint').innerHTML =
+                    '<span style="color: #e94560;">Click two nodes first to select source and target.</span>';
+                return;
+            }
+
+            // Compute steps if needed
+            if (bfsState.steps.length === 0) {
+                bfsState.steps = bfsDispatchAlgo(bfsState.algo, bfsState.sourceNode, bfsState.targetNode, bfsState.adj);
+                bfsState.stepIndex = 0;
+                bfsColorNodes(); // reset colors
+                document.getElementById('bfs-log').innerHTML = '';
+            }
+
+            bfsState.running = true;
+            document.getElementById('bfs-run-btn').textContent = 'Pause';
+            bfsAnimateNext();
+        }
+
+        function bfsAnimateNext() {
+            if (!bfsState.running) return;
+            if (bfsState.stepIndex >= bfsState.steps.length) {
+                bfsStopAnimation();
+                return;
+            }
+            bfsApplyStep(bfsState.steps[bfsState.stepIndex]);
+            bfsState.stepIndex++;
+            bfsUpdateStats();
+            bfsState.timer = setTimeout(bfsAnimateNext, bfsGetSpeed());
+        }
+
+        function bfsStep() {
+            if (bfsState.running) return;
+            if (bfsState.sourceNode === null || bfsState.targetNode === null) {
+                document.getElementById('bfs-select-hint').innerHTML =
+                    '<span style="color: #e94560;">Click two nodes first to select source and target.</span>';
+                return;
+            }
+
+            if (bfsState.steps.length === 0) {
+                bfsState.steps = bfsDispatchAlgo(bfsState.algo, bfsState.sourceNode, bfsState.targetNode, bfsState.adj);
+                bfsState.stepIndex = 0;
+                bfsColorNodes();
+                document.getElementById('bfs-log').innerHTML = '';
+            }
+
+            if (bfsState.stepIndex >= bfsState.steps.length) return;
+            bfsApplyStep(bfsState.steps[bfsState.stepIndex]);
+            bfsState.stepIndex++;
+            bfsUpdateStats();
+        }
+
+        function bfsStopAnimation() {
+            bfsState.running = false;
+            if (bfsState.timer) clearTimeout(bfsState.timer);
+            bfsState.timer = null;
+            document.getElementById('bfs-run-btn').textContent = 'Run';
+        }
+
+        function bfsReset() {
+            bfsStopAnimation();
+            bfsState.steps = [];
+            bfsState.stepIndex = 0;
+            bfsColorNodes();
+            bfsUpdateStats();
+            document.getElementById('bfs-log').innerHTML = '';
+        }
+
+        // --- Apply a single step visually ---
+        const BFS_COLORS = {
+            source_discover: '#2d8abf',  // medium blue - discovered from source
+            source_visit: '#38bdf8',     // bright blue - visited from source
+            target_discover: '#22c55e',  // medium green - discovered from target
+            target_visit: '#4ade80',     // bright green - visited from target
+            path: '#fbbf24',             // gold - final path
+            path_edge: '#fbbf24',
+        };
+
+        function bfsApplyStep(step) {
+            const logEl = document.getElementById('bfs-log');
+            const addLog = (text, cls) => {
+                const div = document.createElement('div');
+                div.className = 'bfs-log-entry ' + (cls || '');
+                div.textContent = text;
+                logEl.appendChild(div);
+                logEl.scrollTop = logEl.scrollHeight;
+            };
+
+            if (step.type === 'start') {
+                // already colored by bfsColorNodes
+                addLog(`Start: node ${step.node} (${step.side})`, step.side === 'source' ? 'source-side' : 'target-side');
+            } else if (step.type === 'discover') {
+                const color = step.side === 'source' ? BFS_COLORS.source_discover : BFS_COLORS.target_discover;
+                bfsState.svgNodeSel.select('circle')
+                    .filter(d => d.id === step.node)
+                    .style('fill', color);
+                // Color edge
+                bfsState.svgLinkSel
+                    .filter(d => {
+                        const sid = typeof d.source === 'object' ? d.source.id : d.source;
+                        const tid = typeof d.target === 'object' ? d.target.id : d.target;
+                        return (sid === step.from && tid === step.node) || (sid === step.node && tid === step.from);
+                    })
+                    .each(d => { d._bfsSide = step.side; })
+                    .style('stroke', color)
+                    .style('stroke-opacity', 1)
+                    .style('stroke-width', '2.5px');
+                addLog(`Discover: ${step.from} → ${step.node}`, step.side === 'source' ? 'source-side' : 'target-side');
+            } else if (step.type === 'visit') {
+                const color = step.side === 'source' ? BFS_COLORS.source_visit : BFS_COLORS.target_visit;
+                bfsState.svgNodeSel.select('circle')
+                    .filter(d => d.id === step.node)
+                    .style('fill', color)
+                    .style('stroke-width', '3px');
+                // Also brighten edges to/from this node that were previously discovered on same side
+                bfsState.svgLinkSel
+                    .filter(d => {
+                        const sid = typeof d.source === 'object' ? d.source.id : d.source;
+                        const tid = typeof d.target === 'object' ? d.target.id : d.target;
+                        return (sid === step.node || tid === step.node) && d._bfsSide === step.side;
+                    })
+                    .style('stroke', color)
+                    .style('stroke-width', '3px');
+                addLog(`Visit: node ${step.node}`, step.side === 'source' ? 'source-side' : 'target-side');
+            } else if (step.type === 'found') {
+                // Highlight path
+                const path = step.path;
+                const pathSet = new Set(path);
+                bfsState.svgNodeSel.select('circle')
+                    .filter(d => pathSet.has(d.id))
+                    .style('fill', BFS_COLORS.path)
+                    .style('stroke', '#fff')
+                    .style('stroke-width', '3px');
+                // Highlight path edges
+                for (let i = 0; i < path.length - 1; i++) {
+                    const a = path[i], b = path[i + 1];
+                    bfsState.svgLinkSel
+                        .filter(d => {
+                            const sid = typeof d.source === 'object' ? d.source.id : d.source;
+                            const tid = typeof d.target === 'object' ? d.target.id : d.target;
+                            return (sid === a && tid === b) || (sid === b && tid === a);
+                        })
+                        .style('stroke', BFS_COLORS.path_edge)
+                        .style('stroke-opacity', 1)
+                        .style('stroke-width', '4px');
+                }
+                const meetText = step.meet !== undefined ? ` (meet at ${step.meet})` : '';
+                addLog(`Path found: ${path.join(' → ')}${meetText} (length ${path.length - 1})`, 'path-found');
+            } else if (step.type === 'not_found') {
+                addLog('No path exists between source and target.', 'no-path');
+            }
+        }
+
+        // --- Stats ---
+        function bfsUpdateStats() {
+            const el = document.getElementById('bfs-stats-content');
+            if (!bfsState.graphData) {
+                el.innerHTML = '<p style="color: #94a3b8;">Select a graph to get started</p>';
+                return;
+            }
+
+            const n = bfsState.graphData.nodes.length;
+            const m = bfsState.graphData.edges.length;
+
+            let html = '';
+            html += `<div class="stat-row"><span class="stat-label">Nodes</span><span class="stat-value">${n}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Edges</span><span class="stat-value">${m}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Algorithm</span><span class="stat-value">${bfsState.algo.toUpperCase()}</span></div>`;
+
+            if (bfsState.steps.length > 0) {
+                const done = bfsState.stepIndex;
+                const total = bfsState.steps.length;
+                const visited = new Set();
+                const discovered = new Set();
+                for (let i = 0; i < done; i++) {
+                    const s = bfsState.steps[i];
+                    if (s.type === 'visit') visited.add(s.node);
+                    if (s.type === 'discover') discovered.add(s.node);
+                }
+                html += `<div class="stat-row"><span class="stat-label">Step</span><span class="stat-value">${done} / ${total}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">Visited</span><span class="stat-value">${visited.size}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">Discovered</span><span class="stat-value">${discovered.size}</span></div>`;
+            }
+
+            el.innerHTML = html;
+        }
+
+        // =========================================
+        // GALTON-WATSON TAB
+        // =========================================
+        function gwGetLambda() {
+            return parseInt(document.getElementById('gw-lambda-slider').value) / 100;
+        }
+        function gwGetMaxGen() {
+            return parseInt(document.getElementById('gw-maxgen-slider').value);
+        }
+        function gwUpdateLambdaDisplay() {
+            document.getElementById('gw-lambda-display').textContent = gwGetLambda().toFixed(2);
+        }
+        function gwUpdateMaxgenDisplay() {
+            document.getElementById('gw-maxgen-display').textContent = gwGetMaxGen();
+        }
+
+        // Poisson random variate (Knuth algorithm)
+        function poissonRandom(lambda) {
+            if (lambda === 0) return 0;
+            const L = Math.exp(-lambda);
+            let k = 0;
+            let p = 1;
+            do {
+                k++;
+                p *= Math.random();
+            } while (p > L);
+            return k - 1;
+        }
+
+        // Generate Galton-Watson tree
+        function gwGenerateTree(lambda, maxGen) {
+            const nodes = [{ id: 0, gen: 0 }];
+            const edges = [];
+            let nextId = 1;
+            let current = [0]; // nodes in current generation
+
+            for (let g = 0; g < maxGen && current.length > 0; g++) {
+                const nextGen = [];
+                for (const parentId of current) {
+                    const nChildren = poissonRandom(lambda);
+                    for (let c = 0; c < nChildren; c++) {
+                        const childId = nextId++;
+                        nodes.push({ id: childId, gen: g + 1 });
+                        edges.push({ source: parentId, target: childId });
+                        nextGen.push(childId);
+                    }
+                }
+                current = nextGen;
+                // Safety: cap at 500 nodes
+                if (nodes.length > 500) break;
+            }
+
+            return { nodes, edges };
+        }
+
+        // Compute GW stats
+        function gwComputeStats(nodes, edges, lambda) {
+            const genCounts = {};
+            let maxGen = 0;
+            nodes.forEach(n => {
+                genCounts[n.gen] = (genCounts[n.gen] || 0) + 1;
+                if (n.gen > maxGen) maxGen = n.gen;
+            });
+
+            const lastGenCount = genCounts[maxGen] || 0;
+            const extinct = maxGen === 0 || (lastGenCount === 0);
+
+            return {
+                totalNodes: nodes.length,
+                totalEdges: edges.length,
+                maxGen,
+                genCounts,
+                extinct,
+                lambda,
+            };
+        }
+
+        function gwRenderStats(stats) {
+            let html = '';
+            html += `<div class="stat-row"><span class="stat-label">&lambda;</span><span class="stat-value">${stats.lambda.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Total nodes</span><span class="stat-value">${stats.totalNodes}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Total edges</span><span class="stat-value">${stats.totalEdges}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Generations</span><span class="stat-value">${stats.maxGen}</span></div>`;
+
+            const status = stats.extinct ? 'Extinct' : 'Survived';
+            const statusColor = stats.extinct ? '#e94560' : '#4ade80';
+            html += `<div class="stat-row"><span class="stat-label">Status</span><span class="stat-value" style="color: ${statusColor}">${status}</span></div>`;
+
+            // Phase transition info
+            html += '<div style="margin-top: 0.8rem; font-size: 0.8rem; color: #94a3b8; line-height: 1.5;">';
+            if (stats.lambda < 1) {
+                html += '<div style="color: #f59e0b;">&lambda; &lt; 1: subcritical (a.s. extinction)</div>';
+            } else if (stats.lambda === 1) {
+                html += '<div style="color: #38bdf8;">&lambda; = 1: critical (a.s. extinction)</div>';
+            } else {
+                const extProb = gwExtinctionProb(stats.lambda);
+                html += `<div style="color: #4ade80;">&lambda; &gt; 1: supercritical (P(extinction) &approx; ${extProb.toFixed(3)})</div>`;
+            }
+            html += '</div>';
+
+            // Generation sizes
+            html += '<div style="margin-top: 0.8rem;">';
+            html += '<div class="stat-label" style="margin-bottom: 0.3rem;">Generation sizes:</div>';
+            html += '<div class="component-colors">';
+            for (let g = 0; g <= stats.maxGen; g++) {
+                const color = COMPONENT_PALETTE[g % COMPONENT_PALETTE.length];
+                html += `<span class="component-chip" style="background: ${color}; color: #fff;">${g}: ${stats.genCounts[g] || 0}</span>`;
+            }
+            html += '</div></div>';
+
+            document.getElementById('gw-stats-content').innerHTML = html;
+        }
+
+        // Compute extinction probability for supercritical case
+        // Smallest root of s = e^{lambda(s-1)} via fixed-point iteration
+        function gwExtinctionProb(lambda) {
+            if (lambda <= 1) return 1;
+            let s = 0.01;
+            for (let i = 0; i < 1000; i++) {
+                s = Math.exp(lambda * (s - 1));
+            }
+            return s;
+        }
+
+        // Draw GW tree
+        function gwDrawTree(treeData) {
+            const container = document.getElementById('gw-graph-container');
+            container.innerHTML = '';
+
+            const width = container.clientWidth || 800;
+            const height = container.clientHeight || 500;
+            const margin = { top: 30, right: 20, bottom: 30, left: 20 };
+
+            const svg = d3.select('#gw-graph-container')
+                .append('svg')
+                .attr('viewBox', [0, 0, width, height]);
+
+            const n = treeData.nodes.length;
+            if (n === 0) return;
+
+            const nodeRadius = n > 200 ? 3 : n > 100 ? 5 : n > 50 ? 8 : n > 20 ? 10 : 14;
+            const fontSize = n > 100 ? '0px' : n > 50 ? '6px' : n > 20 ? '8px' : '10px';
+
+            // Build hierarchy from flat node/edge data
+            const childrenMap = new Map();
+            treeData.edges.forEach(e => {
+                if (!childrenMap.has(e.source)) childrenMap.set(e.source, []);
+                childrenMap.get(e.source).push(e.target);
+            });
+
+            const nodeMap = new Map(treeData.nodes.map(nd => [nd.id, nd]));
+
+            function buildHierarchy(id) {
+                const nd = nodeMap.get(id);
+                const result = { id: nd.id, gen: nd.gen };
+                const kids = childrenMap.get(id);
+                if (kids && kids.length > 0) {
+                    result.children = kids.map(cid => buildHierarchy(cid));
+                }
+                return result;
+            }
+
+            const rootData = buildHierarchy(0);
+            const root = d3.hierarchy(rootData);
+
+            // Use d3.tree layout
+            const treeLayout = d3.tree()
+                .size([width - margin.left - margin.right, height - margin.top - margin.bottom]);
+
+            treeLayout(root);
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            // Draw links as curved paths
+            g.append('g')
+                .selectAll('path')
+                .data(root.links())
+                .join('path')
+                .attr('d', d3.linkVertical()
+                    .x(d => d.x)
+                    .y(d => d.y))
+                .style('fill', 'none')
+                .style('stroke', '#4a90a4')
+                .style('stroke-opacity', 0.5)
+                .style('stroke-width', n > 100 ? '0.5px' : '1px');
+
+            // Draw nodes
+            const nodeSel = g.append('g')
+                .selectAll('g')
+                .data(root.descendants())
+                .join('g')
+                .attr('transform', d => `translate(${d.x},${d.y})`);
+
+            nodeSel.append('circle')
+                .attr('r', nodeRadius)
+                .style('fill', d => COMPONENT_PALETTE[d.data.gen % COMPONENT_PALETTE.length])
+                .style('stroke', '#fff')
+                .style('stroke-width', n > 100 ? '0.5px' : '1.5px');
+
+            if (fontSize !== '0px') {
+                nodeSel.append('text')
+                    .text(d => d.data.gen)
+                    .style('font-size', fontSize)
+                    .style('fill', '#fff')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle')
+                    .style('dominant-baseline', 'central')
+                    .style('pointer-events', 'none');
+            }
+
+            // Pan & zoom
+            const zoom = d3.zoom()
+                .scaleExtent([0.3, 5])
+                .on('zoom', (event) => g.attr('transform', event.transform));
+            svg.call(zoom);
+            svg.call(zoom.transform, d3.zoomIdentity.translate(margin.left, margin.top));
+        }
+
+        function gwGenerate() {
+            const lambda = gwGetLambda();
+            const maxGen = gwGetMaxGen();
+            const treeData = gwGenerateTree(lambda, maxGen);
+            const stats = gwComputeStats(treeData.nodes, treeData.edges, lambda);
+            gwRenderStats(stats);
+            gwDrawTree(treeData);
+        }
+
+        // =====================
+        // CHUNG-LU MODEL
+        // =====================
+        function clGetN() {
+            return parseInt(document.getElementById('cl-n-slider').value);
+        }
+
+        function clGetTau() {
+            return parseInt(document.getElementById('cl-tau-slider').value) / 100;
+        }
+
+        function clUpdateNDisplay() {
+            document.getElementById('cl-n-display').textContent = clGetN();
+        }
+
+        function clUpdateTauDisplay() {
+            document.getElementById('cl-tau-display').textContent = clGetTau().toFixed(2);
+        }
+
+        // Power-law random variate via inverse CDF: P(X >= x) ~ x^{-(tau-1)}
+        // Uses Pareto distribution with x_min = 1, capped to prevent extreme values
+        function clPowerLawSample(tau) {
+            const alpha = tau - 1;
+            if (alpha <= 0) {
+                // Degenerate: extremely heavy tail, cap at reasonable value
+                return 1 + Math.random() * 999;
+            }
+            const u = Math.random();
+            // Cap to avoid Infinity for very small alpha
+            return Math.min(Math.pow(1 - u, -1 / alpha), 1000);
+        }
+
+        function clGenerateGraph(n, tau) {
+            const nodes = [];
+            const weights = [];
+
+            for (let i = 0; i < n; i++) {
+                const w = clPowerLawSample(tau);
+                weights.push(w);
+                nodes.push({ id: i, label: indexToLabel(i), weight: w });
+            }
+
+            const W = weights.reduce((a, b) => a + b, 0);
+
+            const edges = [];
+            for (let i = 0; i < n; i++) {
+                for (let j = i + 1; j < n; j++) {
+                    const pij = Math.min(weights[i] * weights[j] / W, 1);
+                    if (Math.random() < pij) {
+                        edges.push({ source: i, target: j });
+                    }
+                }
+            }
+
+            return { nodes, edges, weights, W };
+        }
+
+        function clComputeStats(graphData, tau) {
+            const { nodes, edges, weights, W } = graphData;
+            const baseStats = computeStats(nodes, edges);
+
+            // Weight statistics
+            const sortedW = [...weights].sort((a, b) => a - b);
+            const medianW = sortedW[Math.floor(sortedW.length / 2)];
+            const maxW = sortedW[sortedW.length - 1];
+            const minW = sortedW[0];
+            const meanW = W / nodes.length;
+
+            return {
+                ...baseStats,
+                tau,
+                W,
+                meanWeight: meanW,
+                medianWeight: medianW,
+                minWeight: minW,
+                maxWeight: maxW,
+            };
+        }
+
+        function clRenderStats(stats) {
+            let html = '';
+            html += `<div class="stat-row"><span class="stat-label">&tau;</span><span class="stat-value">${stats.tau.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Nodes (n)</span><span class="stat-value">${stats.n}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Edges</span><span class="stat-value">${stats.m} / ${stats.maxEdges}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Density</span><span class="stat-value">${stats.density.toFixed(3)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Avg degree</span><span class="stat-value">${stats.avgDegree.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Min / Max degree</span><span class="stat-value">${stats.minDegree} / ${stats.maxDegree}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Components</span><span class="stat-value">${stats.numComponents}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Largest component</span><span class="stat-value">${stats.largestComponent}</span></div>`;
+
+            // Weight stats
+            html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+            html += '<div class="stat-label" style="margin-bottom: 0.3rem;">Weight distribution:</div>';
+            html += `<div class="stat-row"><span class="stat-label">Mean weight</span><span class="stat-value">${stats.meanWeight.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Median weight</span><span class="stat-value">${stats.medianWeight.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Min / Max weight</span><span class="stat-value">${stats.minWeight.toFixed(2)} / ${stats.maxWeight.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Total weight (W)</span><span class="stat-value">${stats.W.toFixed(1)}</span></div>`;
+            html += '</div>';
+
+            // Phase info
+            html += '<div style="margin-top: 0.8rem; font-size: 0.8rem; color: #94a3b8; line-height: 1.5;">';
+            if (stats.tau > 3) {
+                html += '<div style="color: #4ade80;">&tau; &gt; 3: finite variance regime (behaves like ER)</div>';
+            } else if (stats.tau > 2) {
+                html += '<div style="color: #f59e0b;">2 &lt; &tau; &lt; 3: infinite variance regime (hub-dominated)</div>';
+            } else if (stats.tau > 1) {
+                html += '<div style="color: #e94560;">1 &lt; &tau; &le; 2: infinite mean regime (degenerate, near-complete graph)</div>';
+            } else {
+                html += '<div style="color: #e94560;">&tau; &le; 1: extremely degenerate (all weights diverge)</div>';
+            }
+            html += '</div>';
+
+            // Component sizes
+            if (stats.components.length > 1) {
+                html += '<div style="margin-top: 0.8rem;">';
+                html += '<div class="stat-label" style="margin-bottom: 0.3rem;">Component sizes:</div>';
+                html += '<div class="component-colors">';
+                stats.components.forEach((comp, i) => {
+                    const color = componentColor(i);
+                    html += `<span class="component-chip" style="background: ${color}; color: #fff;">${comp.length}</span>`;
+                });
+                html += '</div></div>';
+            }
+
+            document.getElementById('cl-stats-content').innerHTML = html;
+        }
+
+        function clDrawGraph(graphData, stats) {
+            const container = document.getElementById('cl-graph-container');
+            container.innerHTML = '';
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            const svg = d3.select('#cl-graph-container')
+                .append('svg')
+                .attr('viewBox', [0, 0, width, height]);
+
+            // Build node-to-component map
+            const nodeComponent = new Map();
+            stats.components.forEach((comp, i) => {
+                comp.forEach(nodeId => nodeComponent.set(nodeId, i));
+            });
+
+            // Scale node radius by weight
+            const maxWeight = stats.maxWeight;
+            const n = graphData.nodes.length;
+            const baseRadius = n > 50 ? 8 : n > 30 ? 12 : 16;
+
+            const nodes = graphData.nodes.map(nd => ({
+                ...nd,
+                componentIndex: nodeComponent.get(nd.id) || 0,
+                r: baseRadius * (0.5 + 0.5 * Math.sqrt(nd.weight / maxWeight)),
+            }));
+
+            const links = graphData.edges.map(e => ({ ...e }));
+
+            const chargeStrength = n > 50 ? -100 : n > 30 ? -180 : -300;
+            const linkDist = n > 50 ? 30 : n > 30 ? 50 : 70;
+            const fontSize = n > 50 ? '0px' : n > 30 ? '8px' : '10px';
+
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(linkDist))
+                .force('charge', d3.forceManyBody().strength(chargeStrength))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(d => d.r + 2));
+
+            const g = svg.append('g');
+
+            const link = g.append('g')
+                .selectAll('line')
+                .data(links)
+                .join('line')
+                .attr('class', 'link');
+
+            const node = g.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .join('g')
+                .attr('class', 'node');
+
+            node.append('circle')
+                .attr('r', d => d.r)
+                .style('fill', d => componentColor(d.componentIndex))
+                .style('stroke', '#fff')
+                .style('stroke-width', '2px')
+                .style('cursor', 'pointer');
+
+            if (fontSize !== '0px') {
+                node.append('text')
+                    .text(d => d.label)
+                    .style('font-size', fontSize)
+                    .style('fill', '#fff')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle')
+                    .style('dominant-baseline', 'central')
+                    .style('pointer-events', 'none');
+            }
+
+            // Tooltip showing weight on hover
+            node.append('title')
+                .text(d => `${d.label}: w=${d.weight.toFixed(2)}, deg=${links.filter(l => {
+                    const s = typeof l.source === 'object' ? l.source.id : l.source;
+                    const t = typeof l.target === 'object' ? l.target.id : l.target;
+                    return s === d.id || t === d.id;
+                }).length}`);
+
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x; d.fy = d.y;
+            }
+            function dragged(event, d) {
+                d.fx = event.x; d.fy = event.y;
+            }
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null; d.fy = null;
+            }
+
+            node.call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+
+            // Pan & zoom
+            const zoom = d3.zoom()
+                .scaleExtent([0.3, 5])
+                .on('zoom', (event) => g.attr('transform', event.transform));
+            svg.call(zoom);
+        }
+
+        function clGenerate() {
+            const n = clGetN();
+            const tau = clGetTau();
+            const graphData = clGenerateGraph(n, tau);
+            const stats = clComputeStats(graphData, tau);
+            clRenderStats(stats);
+            clDrawGraph(graphData, stats);
+        }
+
+        // =====================
+        // BARABASI-ALBERT MODEL
+        // =====================
+        function baGetN() {
+            return parseInt(document.getElementById('ba-n-slider').value);
+        }
+
+        function baGetM() {
+            return parseInt(document.getElementById('ba-m-slider').value);
+        }
+
+        function baUpdateNDisplay() {
+            document.getElementById('ba-n-display').textContent = baGetN();
+        }
+
+        function baUpdateMDisplay() {
+            document.getElementById('ba-m-display').textContent = baGetM();
+        }
+
+        function baGenerateGraph(n, m) {
+            // Seed with an initial complete graph on m+1 nodes (so each new node can attach m times)
+            const m0 = Math.min(m + 1, n);
+            const nodes = [];
+            for (let i = 0; i < n; i++) {
+                nodes.push({ id: i, label: indexToLabel(i) });
+            }
+
+            const edges = [];
+            // targetsMultiset: each node id appears once per edge endpoint it owns (used for preferential sampling)
+            const targetsMultiset = [];
+
+            // Initial complete graph among first m0 nodes
+            for (let i = 0; i < m0; i++) {
+                for (let j = i + 1; j < m0; j++) {
+                    edges.push({ source: i, target: j });
+                    targetsMultiset.push(i);
+                    targetsMultiset.push(j);
+                }
+            }
+
+            // Add remaining nodes one by one
+            for (let newNode = m0; newNode < n; newNode++) {
+                const chosen = new Set();
+                // Sample m distinct existing nodes weighted by degree
+                const effectiveM = Math.min(m, newNode);
+                let attempts = 0;
+                while (chosen.size < effectiveM && attempts < 10000) {
+                    attempts++;
+                    let pick;
+                    if (targetsMultiset.length === 0) {
+                        pick = Math.floor(Math.random() * newNode);
+                    } else {
+                        pick = targetsMultiset[Math.floor(Math.random() * targetsMultiset.length)];
+                    }
+                    if (!chosen.has(pick) && pick !== newNode) {
+                        chosen.add(pick);
+                    }
+                }
+                chosen.forEach(target => {
+                    edges.push({ source: newNode, target });
+                    targetsMultiset.push(newNode);
+                    targetsMultiset.push(target);
+                });
+            }
+
+            return { nodes, edges };
+        }
+
+        function baComputeStats(graphData, mParam) {
+            const { nodes, edges } = graphData;
+            const baseStats = computeStats(nodes, edges);
+
+            const degMap = new Map();
+            nodes.forEach(node => degMap.set(node.id, 0));
+            edges.forEach(e => {
+                const sid = typeof e.source === 'object' ? e.source.id : e.source;
+                const tid = typeof e.target === 'object' ? e.target.id : e.target;
+                degMap.set(sid, degMap.get(sid) + 1);
+                degMap.set(tid, degMap.get(tid) + 1);
+            });
+
+            return {
+                ...baseStats,
+                mParam,
+                degrees: [...degMap.values()],
+                degreeMap: degMap,
+            };
+        }
+
+        function baRenderStats(stats) {
+            let html = '';
+            html += `<div class="stat-row"><span class="stat-label">m (edges/new node)</span><span class="stat-value">${stats.mParam}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Nodes (n)</span><span class="stat-value">${stats.n}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Edges</span><span class="stat-value">${stats.m}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Density</span><span class="stat-value">${stats.density.toFixed(3)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Avg degree</span><span class="stat-value">${stats.avgDegree.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Min / Max degree</span><span class="stat-value">${stats.minDegree} / ${stats.maxDegree}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Components</span><span class="stat-value">${stats.numComponents}</span></div>`;
+
+            // Degree distribution (top hubs)
+            const sortedDeg = [...stats.degrees].sort((a, b) => b - a);
+            html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+            html += '<div class="stat-label" style="margin-bottom: 0.3rem;">Top-5 hub degrees:</div>';
+            html += '<div class="component-colors">';
+            sortedDeg.slice(0, 5).forEach(d => {
+                html += `<span class="component-chip" style="background: #e94560; color: #fff;">${d}</span>`;
+            });
+            html += '</div></div>';
+
+            // Theory note
+            html += '<div style="margin-top: 0.8rem; font-size: 0.8rem; color: #94a3b8; line-height: 1.5;">';
+            html += '<div>Preferential attachment yields a power-law degree distribution:</div>';
+            html += '<div style="color: #4ade80; margin-top: 0.3rem;">P(k) &sim; k<sup>-3</sup> (exponent &tau; = 3, independent of m)</div>';
+            html += `<div style="margin-top: 0.3rem;">Expected edges: m &sdot; n &minus; m(m+1)/2 = ${(stats.mParam * stats.n - stats.mParam * (stats.mParam + 1) / 2)}</div>`;
+            html += '</div>';
+
+            document.getElementById('ba-stats-content').innerHTML = html;
+        }
+
+        function baDrawGraph(graphData, stats) {
+            const container = document.getElementById('ba-graph-container');
+            container.innerHTML = '';
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            const svg = d3.select('#ba-graph-container')
+                .append('svg')
+                .attr('viewBox', [0, 0, width, height]);
+
+            const nodeComponent = new Map();
+            stats.components.forEach((comp, i) => {
+                comp.forEach(nodeId => nodeComponent.set(nodeId, i));
+            });
+
+            const n = graphData.nodes.length;
+            const maxDeg = stats.maxDegree || 1;
+            const baseRadius = n > 80 ? 6 : n > 40 ? 10 : 14;
+
+            const nodes = graphData.nodes.map(nd => ({
+                ...nd,
+                componentIndex: nodeComponent.get(nd.id) || 0,
+                degree: stats.degreeMap.get(nd.id),
+                r: baseRadius * (0.6 + 0.8 * Math.sqrt(stats.degreeMap.get(nd.id) / maxDeg)),
+            }));
+
+            const links = graphData.edges.map(e => ({ ...e }));
+
+            const chargeStrength = n > 80 ? -60 : n > 40 ? -120 : -220;
+            const linkDist = n > 80 ? 25 : n > 40 ? 40 : 60;
+            const fontSize = n > 80 ? '0px' : n > 40 ? '8px' : '10px';
+
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(linkDist))
+                .force('charge', d3.forceManyBody().strength(chargeStrength))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(d => d.r + 2));
+
+            const g = svg.append('g');
+
+            const link = g.append('g')
+                .selectAll('line')
+                .data(links)
+                .join('line')
+                .attr('class', 'link');
+
+            const node = g.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .join('g')
+                .attr('class', 'node');
+
+            node.append('circle')
+                .attr('r', d => d.r)
+                .style('fill', d => componentColor(d.componentIndex))
+                .style('stroke', '#fff')
+                .style('stroke-width', '2px');
+
+            if (fontSize !== '0px') {
+                node.append('text')
+                    .text(d => d.label)
+                    .style('font-size', fontSize)
+                    .style('fill', '#fff')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle')
+                    .style('dominant-baseline', 'central')
+                    .style('pointer-events', 'none');
+            }
+
+            node.append('title')
+                .text(d => `${d.label}: deg=${d.degree}`);
+
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x; d.fy = d.y;
+            }
+            function dragged(event, d) {
+                d.fx = event.x; d.fy = event.y;
+            }
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null; d.fy = null;
+            }
+
+            node.call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+
+            const zoom = d3.zoom()
+                .scaleExtent([0.3, 5])
+                .on('zoom', (event) => g.attr('transform', event.transform));
+            svg.call(zoom);
+        }
+
+        function baGenerate() {
+            const n = baGetN();
+            const m = baGetM();
+            const graphData = baGenerateGraph(n, m);
+            const stats = baComputeStats(graphData, m);
+            baRenderStats(stats);
+            baDrawGraph(graphData, stats);
+        }
+
+        // =====================
+        // WATTS-STROGATZ MODEL
+        // =====================
+        function wsGetN() {
+            return parseInt(document.getElementById('ws-n-slider').value);
+        }
+
+        function wsGetK() {
+            return parseInt(document.getElementById('ws-k-slider').value);
+        }
+
+        function wsGetP() {
+            return parseInt(document.getElementById('ws-p-slider').value) / 200;
+        }
+
+        function wsUpdateNDisplay() {
+            const n = wsGetN();
+            document.getElementById('ws-n-display').textContent = n;
+            // Clamp k slider so k < n
+            const kSlider = document.getElementById('ws-k-slider');
+            const maxK = Math.max(2, (n - 1) - ((n - 1) % 2));
+            kSlider.max = Math.min(20, maxK);
+            if (parseInt(kSlider.value) > kSlider.max) {
+                kSlider.value = kSlider.max;
+                wsUpdateKDisplay();
+            }
+        }
+
+        function wsUpdateKDisplay() {
+            document.getElementById('ws-k-display').textContent = wsGetK();
+        }
+
+        function wsUpdatePDisplay() {
+            document.getElementById('ws-p-display').textContent = wsGetP().toFixed(3);
+        }
+
+        function wsGenerateGraph(n, k, p) {
+            // k must be even and < n
+            k = Math.min(k - (k % 2), n - 1 - ((n - 1) % 2));
+            if (k < 2) k = 2;
+            const half = k / 2;
+
+            const nodes = [];
+            for (let i = 0; i < n; i++) {
+                nodes.push({ id: i, label: indexToLabel(i) });
+            }
+
+            // Build ring lattice: each node connects to k/2 neighbors on each side
+            // Use a set of "i<j" edges keyed as i*n+j
+            const edgeSet = new Set();
+            const key = (a, b) => a < b ? a * n + b : b * n + a;
+
+            for (let i = 0; i < n; i++) {
+                for (let s = 1; s <= half; s++) {
+                    const j = (i + s) % n;
+                    edgeSet.add(key(i, j));
+                }
+            }
+
+            // Rewire: iterate over each "right-side" edge (i, (i+s) mod n) for s=1..half
+            for (let s = 1; s <= half; s++) {
+                for (let i = 0; i < n; i++) {
+                    const j = (i + s) % n;
+                    const currentKey = key(i, j);
+                    if (!edgeSet.has(currentKey)) continue;
+                    if (Math.random() < p) {
+                        // Remove and rewire
+                        let attempts = 0;
+                        while (attempts < 50) {
+                            attempts++;
+                            const target = Math.floor(Math.random() * n);
+                            if (target === i) continue;
+                            const newKey = key(i, target);
+                            if (edgeSet.has(newKey)) continue;
+                            edgeSet.delete(currentKey);
+                            edgeSet.add(newKey);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            const edges = [];
+            edgeSet.forEach(ek => {
+                const a = Math.floor(ek / n);
+                const b = ek % n;
+                edges.push({ source: a, target: b });
+            });
+
+            return { nodes, edges, k, ringOrder: nodes.map(nd => nd.id) };
+        }
+
+        function wsClusteringCoefficient(nodes, edges) {
+            const adj = new Map();
+            nodes.forEach(node => adj.set(node.id, new Set()));
+            edges.forEach(e => {
+                const sid = typeof e.source === 'object' ? e.source.id : e.source;
+                const tid = typeof e.target === 'object' ? e.target.id : e.target;
+                adj.get(sid).add(tid);
+                adj.get(tid).add(sid);
+            });
+
+            let sum = 0;
+            let counted = 0;
+            nodes.forEach(node => {
+                const neighbors = [...adj.get(node.id)];
+                const deg = neighbors.length;
+                if (deg < 2) return;
+                let triangles = 0;
+                for (let i = 0; i < neighbors.length; i++) {
+                    for (let j = i + 1; j < neighbors.length; j++) {
+                        if (adj.get(neighbors[i]).has(neighbors[j])) triangles++;
+                    }
+                }
+                const possible = deg * (deg - 1) / 2;
+                sum += triangles / possible;
+                counted++;
+            });
+            return counted > 0 ? sum / counted : 0;
+        }
+
+        function wsAveragePathLength(nodes, edges) {
+            const adj = new Map();
+            nodes.forEach(node => adj.set(node.id, []));
+            edges.forEach(e => {
+                const sid = typeof e.source === 'object' ? e.source.id : e.source;
+                const tid = typeof e.target === 'object' ? e.target.id : e.target;
+                adj.get(sid).push(tid);
+                adj.get(tid).push(sid);
+            });
+
+            let totalDist = 0;
+            let pairCount = 0;
+            nodes.forEach(src => {
+                const dist = new Map();
+                dist.set(src.id, 0);
+                const queue = [src.id];
+                while (queue.length > 0) {
+                    const u = queue.shift();
+                    for (const v of adj.get(u)) {
+                        if (!dist.has(v)) {
+                            dist.set(v, dist.get(u) + 1);
+                            queue.push(v);
+                        }
+                    }
+                }
+                dist.forEach((d, targetId) => {
+                    if (targetId !== src.id) {
+                        totalDist += d;
+                        pairCount++;
+                    }
+                });
+            });
+            return pairCount > 0 ? totalDist / pairCount : 0;
+        }
+
+        function wsComputeStats(graphData, k, p) {
+            const { nodes, edges } = graphData;
+            const baseStats = computeStats(nodes, edges);
+            const C = wsClusteringCoefficient(nodes, edges);
+            const L = wsAveragePathLength(nodes, edges);
+
+            // Lattice reference values (p=0)
+            const C_lattice = k >= 2 ? (3 * (k - 2)) / (4 * (k - 1)) : 0;
+            const L_lattice = k > 0 ? nodes.length / (2 * k) : 0;
+
+            return {
+                ...baseStats,
+                k,
+                p,
+                clustering: C,
+                avgPathLength: L,
+                clusteringLattice: C_lattice,
+                pathLengthLattice: L_lattice,
+            };
+        }
+
+        function wsRenderStats(stats) {
+            let html = '';
+            html += `<div class="stat-row"><span class="stat-label">n</span><span class="stat-value">${stats.n}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">k</span><span class="stat-value">${stats.k}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">&beta; (rewiring p)</span><span class="stat-value">${stats.p.toFixed(3)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Edges</span><span class="stat-value">${stats.m}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Density</span><span class="stat-value">${stats.density.toFixed(3)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Avg degree</span><span class="stat-value">${stats.avgDegree.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Min / Max degree</span><span class="stat-value">${stats.minDegree} / ${stats.maxDegree}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Components</span><span class="stat-value">${stats.numComponents}</span></div>`;
+
+            // Small-world diagnostics
+            html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+            html += '<div class="stat-label" style="margin-bottom: 0.3rem;">Small-world metrics:</div>';
+            html += `<div class="stat-row"><span class="stat-label">Clustering C</span><span class="stat-value">${stats.clustering.toFixed(3)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Avg path length L</span><span class="stat-value">${stats.avgPathLength.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Lattice C (p=0)</span><span class="stat-value">${stats.clusteringLattice.toFixed(3)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Lattice L (p=0)</span><span class="stat-value">${stats.pathLengthLattice.toFixed(2)}</span></div>`;
+            html += '</div>';
+
+            // Regime info
+            html += '<div style="margin-top: 0.8rem; font-size: 0.8rem; color: #94a3b8; line-height: 1.5;">';
+            if (stats.p === 0) {
+                html += '<div style="color: #f59e0b;">&beta; = 0: regular ring lattice (high C, high L)</div>';
+            } else if (stats.p < 0.1) {
+                html += '<div style="color: #4ade80;">Small-world regime: high clustering, short paths</div>';
+            } else if (stats.p < 0.5) {
+                html += '<div style="color: #38bdf8;">Transitioning toward random graph</div>';
+            } else {
+                html += '<div style="color: #e94560;">&beta; &ge; 0.5: approaches Erdos-Renyi (low C, short L)</div>';
+            }
+            html += '</div>';
+
+            // Delta-cube panel
+            if (wsState.showDelta && wsState.source != null && wsState.target != null) {
+                html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+                html += `<div class="stat-label" style="margin-bottom: 0.3rem;">&Delta;-cube (d = k/2 = ${wsState.d}):</div>`;
+                html += `<div class="stat-row"><span class="stat-label">Source s</span><span class="stat-value">${indexToLabel(wsState.source)} (#${wsState.source})</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">Target t</span><span class="stat-value">${indexToLabel(wsState.target)} (#${wsState.target})</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">Ring dist(s, t)</span><span class="stat-value">${wsState.ringDistance}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">T</span><span class="stat-value">${wsState.T.toFixed(2)}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">&Delta; = T/4</span><span class="stat-value">${wsState.delta.toFixed(2)}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">|cube|</span><span class="stat-value">${wsState.deltaCubeSet.size}</span></div>`;
+                html += '<div style="font-size: 0.78rem; color: #94a3b8; margin-top: 0.5rem; line-height: 1.5;">';
+                html += 'In expectation, O(T) greedy steps suffice to navigate from s to t. The &Delta;-cube around t (Manhattan distance &le; &Delta;) is the absorbing region used in the proof.';
+                html += '</div></div>';
+            }
+
+            document.getElementById('ws-stats-content').innerHTML = html;
+        }
+
+        function wsDrawGraph(graphData, stats) {
+            const container = document.getElementById('ws-graph-container');
+            container.innerHTML = '';
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            const svg = d3.select('#ws-graph-container')
+                .append('svg')
+                .attr('viewBox', [0, 0, width, height]);
+
+            const nodeComponent = new Map();
+            stats.components.forEach((comp, i) => {
+                comp.forEach(nodeId => nodeComponent.set(nodeId, i));
+            });
+
+            const n = graphData.nodes.length;
+            const cx = width / 2;
+            const cy = height / 2;
+            const radius = Math.min(width, height) * 0.4;
+            const nodeR = n > 60 ? 5 : n > 30 ? 8 : 12;
+            const fontSize = n > 60 ? '0px' : n > 30 ? '8px' : '10px';
+
+            // Fix positions on a ring (this is the visual signature of WS)
+            const nodes = graphData.nodes.map((nd, i) => {
+                const theta = (2 * Math.PI * i) / n - Math.PI / 2;
+                return {
+                    ...nd,
+                    componentIndex: nodeComponent.get(nd.id) || 0,
+                    x: cx + radius * Math.cos(theta),
+                    y: cy + radius * Math.sin(theta),
+                    theta,
+                };
+            });
+            const nodeById = new Map(nodes.map(nd => [nd.id, nd]));
+
+            // Classify edges: "short" = ring-neighbor (|i-j| mod n <= k/2), else "long" (rewired / shortcut)
+            const half = stats.k / 2;
+            const isShort = (a, b) => {
+                const d = Math.abs(a - b);
+                const circ = Math.min(d, n - d);
+                return circ <= half;
+            };
+
+            const g = svg.append('g');
+
+            // Delta-cube highlight: draw arc/annulus around the ring covering the cube vertices
+            if (wsState.showDelta && wsState.target != null && wsState.deltaCubeSet.size > 0) {
+                const t = wsState.target;
+                const delta = wsState.delta;
+                const arcWidth = nodeR * 2.4;
+                const innerR = radius - arcWidth / 2;
+                const outerR = radius + arcWidth / 2;
+                if (wsState.deltaCubeSet.size >= n) {
+                    g.append('circle')
+                        .attr('cx', cx).attr('cy', cy)
+                        .attr('r', radius)
+                        .attr('fill', 'none')
+                        .attr('stroke', '#fbbf24')
+                        .attr('stroke-width', arcWidth)
+                        .attr('stroke-opacity', 0.18);
+                } else {
+                    const tTheta = (2 * Math.PI * t) / n - Math.PI / 2;
+                    const span = (2 * Math.PI * delta) / n;
+                    const arcGen = d3.arc()
+                        .innerRadius(innerR)
+                        .outerRadius(outerR)
+                        .startAngle(tTheta - span + Math.PI / 2)
+                        .endAngle(tTheta + span + Math.PI / 2);
+                    g.append('path')
+                        .attr('transform', `translate(${cx},${cy})`)
+                        .attr('d', arcGen())
+                        .attr('fill', '#fbbf24')
+                        .attr('opacity', 0.22);
+                }
+            }
+
+            // Draw edges as arcs so overlapping ring edges don't stack
+            const link = g.append('g')
+                .selectAll('line')
+                .data(graphData.edges)
+                .join('line')
+                .attr('x1', d => nodeById.get(d.source).x)
+                .attr('y1', d => nodeById.get(d.source).y)
+                .attr('x2', d => nodeById.get(d.target).x)
+                .attr('y2', d => nodeById.get(d.target).y)
+                .attr('stroke', d => isShort(d.source, d.target) ? '#4a90a4' : '#fbbf24')
+                .attr('stroke-width', d => isShort(d.source, d.target) ? 1.2 : 1.8)
+                .attr('stroke-opacity', d => isShort(d.source, d.target) ? 0.5 : 0.9);
+
+            const node = g.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .join('g')
+                .attr('class', 'node')
+                .attr('transform', d => `translate(${d.x},${d.y})`);
+
+            const sId = wsState.source;
+            const tId = wsState.target;
+            const showSel = wsState.showDelta && sId != null;
+            const showCube = wsState.showDelta && tId != null;
+            const cube = wsState.deltaCubeSet;
+
+            if (wsState.showDelta) {
+                node.style('cursor', 'pointer').on('click', (event, d) => wsNodeClicked(d.id));
+            }
+
+            node.append('circle')
+                .attr('r', d => showSel && (d.id === sId || d.id === tId) ? nodeR * 1.6 : nodeR)
+                .style('fill', d => {
+                    if (showSel) {
+                        if (d.id === tId) return '#ef4444';
+                        if (d.id === sId) return '#22c55e';
+                        if (showCube && cube.has(d.id)) return '#fbbf24';
+                    }
+                    return componentColor(d.componentIndex);
+                })
+                .style('stroke', '#fff')
+                .style('stroke-width', d => showSel && (d.id === sId || d.id === tId) ? '2.5px' : '1.5px');
+
+            if (fontSize !== '0px') {
+                node.append('text')
+                    .text(d => d.label)
+                    .style('font-size', fontSize)
+                    .style('fill', '#fff')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle')
+                    .style('dominant-baseline', 'central')
+                    .style('pointer-events', 'none');
+            }
+
+            // Legend
+            const legendH = wsState.showDelta ? 96 : 42;
+            const legend = svg.append('g').attr('transform', `translate(12, 12)`);
+            legend.append('rect').attr('x', 0).attr('y', 0).attr('width', 170).attr('height', legendH)
+                .attr('fill', '#16213e').attr('stroke', '#0f3460').attr('rx', 4);
+            legend.append('line').attr('x1', 8).attr('y1', 14).attr('x2', 28).attr('y2', 14)
+                .attr('stroke', '#4a90a4').attr('stroke-width', 1.2).attr('stroke-opacity', 0.5);
+            legend.append('text').attr('x', 34).attr('y', 18).attr('fill', '#94a3b8').style('font-size', '11px').text('ring edge');
+            legend.append('line').attr('x1', 8).attr('y1', 32).attr('x2', 28).attr('y2', 32)
+                .attr('stroke', '#fbbf24').attr('stroke-width', 1.8).attr('stroke-opacity', 0.9);
+            legend.append('text').attr('x', 34).attr('y', 36).attr('fill', '#94a3b8').style('font-size', '11px').text('rewired (shortcut)');
+            if (wsState.showDelta) {
+                legend.append('circle').attr('cx', 18).attr('cy', 50).attr('r', 5).attr('fill', '#22c55e');
+                legend.append('text').attr('x', 34).attr('y', 54).attr('fill', '#94a3b8').style('font-size', '11px').text('source s');
+                legend.append('circle').attr('cx', 18).attr('cy', 68).attr('r', 6).attr('fill', '#ef4444');
+                legend.append('text').attr('x', 34).attr('y', 72).attr('fill', '#94a3b8').style('font-size', '11px').text('target t');
+                legend.append('circle').attr('cx', 18).attr('cy', 86).attr('r', 5).attr('fill', '#fbbf24');
+                legend.append('text').attr('x', 34).attr('y', 90).attr('fill', '#94a3b8').style('font-size', '11px').text('\u0394-cube vertex');
+            }
+
+            // Zoom & pan
+            const zoom = d3.zoom()
+                .scaleExtent([0.3, 5])
+                .on('zoom', (event) => g.attr('transform', event.transform));
+            svg.call(zoom);
+        }
+
+        const wsState = {
+            graphData: null,
+            stats: null,
+            showDelta: false,
+            source: null,
+            target: null,
+            T: 0,
+            delta: 0,
+            deltaCubeSet: new Set(),
+            ringDistance: 0,
+        };
+
+        function wsRingDist(a, b, n) {
+            const d = Math.abs(a - b);
+            return Math.min(d, n - d);
+        }
+
+        function wsNodeClicked(nodeId) {
+            if (!wsState.graphData || !wsState.showDelta) return;
+            if (wsState.source === null) {
+                wsState.source = nodeId;
+                wsState.target = null;
+            } else if (wsState.target === null && nodeId !== wsState.source) {
+                wsState.target = nodeId;
+            } else {
+                wsState.source = nodeId;
+                wsState.target = null;
+            }
+            wsComputeDeltaCube();
+            wsRenderStats(wsState.stats);
+            wsDrawGraph(wsState.graphData, wsState.stats);
+        }
+
+        function wsPickST() {
+            if (!wsState.graphData) return;
+            const n = wsState.graphData.nodes.length;
+            if (n < 4) return;
+            const adj = new Set();
+            wsState.graphData.edges.forEach(e => {
+                const sid = typeof e.source === 'object' ? e.source.id : e.source;
+                const tid = typeof e.target === 'object' ? e.target.id : e.target;
+                adj.add(sid * n + tid);
+                adj.add(tid * n + sid);
+            });
+            let s = 0, t = 0, attempts = 0;
+            do {
+                s = Math.floor(Math.random() * n);
+                t = Math.floor(Math.random() * n);
+                attempts++;
+            } while ((s === t || adj.has(s * n + t)) && attempts < 1000);
+            wsState.source = s;
+            wsState.target = t;
+            wsComputeDeltaCube();
+            wsRenderStats(wsState.stats);
+            wsDrawGraph(wsState.graphData, wsState.stats);
+        }
+
+        function wsComputeDeltaCube() {
+            if (!wsState.graphData || wsState.target == null) {
+                wsState.deltaCubeSet = new Set();
+                return;
+            }
+            const n = wsState.graphData.nodes.length;
+            const p = wsGetP();
+            const k = wsGetK();
+            const d = Math.max(1, k / 2);
+            let T;
+            if (p > 0) {
+                T = Math.min(Math.pow(n, 1 / d), Math.pow(p, -1 / (d + 1)));
+            } else {
+                T = Math.pow(n, 1 / d);
+            }
+            const Delta = T / 4;
+            wsState.d = d;
+            wsState.T = T;
+            wsState.delta = Delta;
+            const t = wsState.target;
+            const cube = new Set();
+            for (let v = 0; v < n; v++) {
+                if (wsRingDist(v, t, n) <= Delta) cube.add(v);
+            }
+            wsState.deltaCubeSet = cube;
+            wsState.ringDistance = wsState.source != null ? wsRingDist(wsState.source, t, n) : 0;
+        }
+
+        function wsParamChanged(which) {
+            if (!wsState.showDelta) return;
+            // n changes the ring layout — regenerate graph entirely
+            if (which === 'n') {
+                wsGenerate();
+                return;
+            }
+            // k or p: keep existing graph, recompute Delta and cube
+            if (!wsState.graphData) return;
+            wsComputeDeltaCube();
+            wsRenderStats(wsState.stats);
+            wsDrawGraph(wsState.graphData, wsState.stats);
+        }
+
+        function wsToggleDelta() {
+            wsState.showDelta = document.getElementById('ws-delta-toggle').checked;
+            document.getElementById('ws-pick-st-btn').style.display = wsState.showDelta ? '' : 'none';
+            if (!wsState.graphData) return;
+            if (wsState.showDelta && wsState.source == null) {
+                wsPickST();
+            } else {
+                wsRenderStats(wsState.stats);
+                wsDrawGraph(wsState.graphData, wsState.stats);
+            }
+        }
+
+        function wsGenerate() {
+            const n = wsGetN();
+            const k = wsGetK();
+            const p = wsGetP();
+            const graphData = wsGenerateGraph(n, k, p);
+            const stats = wsComputeStats(graphData, graphData.k, p);
+            wsState.graphData = graphData;
+            wsState.stats = stats;
+            wsState.source = null;
+            wsState.target = null;
+            wsState.deltaCubeSet = new Set();
+            if (wsState.showDelta) wsPickST();
+            wsRenderStats(stats);
+            wsDrawGraph(graphData, stats);
+        }
+
+        // =====================
+        // KLEINBERG MODEL (ring lattice with rewiring weighted by ring distance^-r)
+        // =====================
+        function kgGetN() {
+            return parseInt(document.getElementById('kg-n-slider').value);
+        }
+        function kgGetK() {
+            return parseInt(document.getElementById('kg-k-slider').value);
+        }
+        function kgGetBeta() {
+            return parseInt(document.getElementById('kg-beta-slider').value) / 200;
+        }
+        function kgGetR() {
+            return parseInt(document.getElementById('kg-r-slider').value) / 100;
+        }
+        function kgUpdateNDisplay() {
+            const n = kgGetN();
+            document.getElementById('kg-n-display').textContent = n;
+            const kSlider = document.getElementById('kg-k-slider');
+            const maxK = Math.max(2, (n - 1) - ((n - 1) % 2));
+            kSlider.max = Math.min(20, maxK);
+            if (parseInt(kSlider.value) > kSlider.max) {
+                kSlider.value = kSlider.max;
+                kgUpdateKDisplay();
+            }
+        }
+        function kgUpdateKDisplay() {
+            document.getElementById('kg-k-display').textContent = kgGetK();
+        }
+        function kgUpdateBetaDisplay() {
+            document.getElementById('kg-beta-display').textContent = kgGetBeta().toFixed(3);
+        }
+        function kgUpdateRDisplay() {
+            document.getElementById('kg-r-display').textContent = kgGetR().toFixed(2);
+        }
+
+        function kgRingDist(a, b, n) {
+            const d = Math.abs(a - b);
+            return Math.min(d, n - d);
+        }
+
+        function kgGenerateGraph(n, k, beta, r) {
+            k = Math.min(k - (k % 2), n - 1 - ((n - 1) % 2));
+            if (k < 2) k = 2;
+            const half = k / 2;
+
+            const nodes = [];
+            for (let i = 0; i < n; i++) {
+                nodes.push({ id: i, label: indexToLabel(i) });
+            }
+
+            const key = (a, b) => a < b ? a * n + b : b * n + a;
+            const edgeSet = new Set();
+            const rewired = new Set();
+
+            // Initial ring lattice
+            for (let i = 0; i < n; i++) {
+                for (let s = 1; s <= half; s++) {
+                    const j = (i + s) % n;
+                    edgeSet.add(key(i, j));
+                }
+            }
+
+            // Rewire each ring edge with prob beta; new endpoint sampled with weight ringDist^(-r)
+            for (let s = 1; s <= half; s++) {
+                for (let i = 0; i < n; i++) {
+                    const j = (i + s) % n;
+                    const currentKey = key(i, j);
+                    if (!edgeSet.has(currentKey)) continue;
+                    if (Math.random() >= beta) continue;
+
+                    // Build candidate distribution over v != i, no existing edge to v
+                    const cands = [];
+                    const weights = [];
+                    let total = 0;
+                    for (let v = 0; v < n; v++) {
+                        if (v === i) continue;
+                        if (edgeSet.has(key(i, v))) continue;
+                        const dRing = kgRingDist(i, v, n);
+                        const w = Math.pow(dRing, -r);
+                        cands.push(v);
+                        weights.push(w);
+                        total += w;
+                    }
+                    if (cands.length === 0 || total <= 0 || !isFinite(total)) continue;
+
+                    let u = Math.random() * total;
+                    let chosen = cands[cands.length - 1];
+                    for (let idx = 0; idx < cands.length; idx++) {
+                        u -= weights[idx];
+                        if (u <= 0) { chosen = cands[idx]; break; }
+                    }
+
+                    edgeSet.delete(currentKey);
+                    const newKey = key(i, chosen);
+                    edgeSet.add(newKey);
+                    rewired.add(newKey);
+                }
+            }
+
+            const edges = [];
+            edgeSet.forEach(ek => {
+                const a = Math.floor(ek / n);
+                const b = ek % n;
+                edges.push({ source: a, target: b, kind: rewired.has(ek) ? 'rewired' : 'ring' });
+            });
+
+            return { nodes, edges, n, k, beta, r };
+        }
+
+        function kgComputeStats(graphData) {
+            const { nodes, edges, k, beta, r } = graphData;
+            const baseStats = computeStats(nodes, edges);
+            const ringEdges = edges.filter(e => e.kind === 'ring').length;
+            const rewiredEdges = edges.filter(e => e.kind === 'rewired').length;
+            return {
+                ...baseStats,
+                k, beta, r,
+                ringEdges,
+                rewiredEdges,
+            };
+        }
+
+        function kgRenderStats(stats) {
+            const d = Math.max(1, stats.k / 2);
+            let html = '';
+            html += `<div class="stat-row"><span class="stat-label">n</span><span class="stat-value">${stats.n}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">k</span><span class="stat-value">${stats.k}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">&beta; (rewiring p)</span><span class="stat-value">${stats.beta.toFixed(3)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">r (exponent)</span><span class="stat-value">${stats.r.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Edges (total)</span><span class="stat-value">${stats.m}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Ring / rewired</span><span class="stat-value">${stats.ringEdges} / ${stats.rewiredEdges}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Avg degree</span><span class="stat-value">${stats.avgDegree.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Min / Max degree</span><span class="stat-value">${stats.minDegree} / ${stats.maxDegree}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Components</span><span class="stat-value">${stats.numComponents}</span></div>`;
+
+            html += '<div style="margin-top: 0.8rem; font-size: 0.8rem; color: #94a3b8; line-height: 1.5;">';
+            const eps = 0.05;
+            if (Math.abs(stats.r - d) < eps) {
+                html += `<div style="color: #4ade80;">r = d = ${d}: optimal navigability &mdash; greedy routing in O(log<sup>2</sup> n) hops</div>`;
+            } else if (stats.r < d - eps) {
+                html += `<div style="color: #38bdf8;">r &lt; d = ${d}: shortcuts too uniform (long jumps frequent), greedy routing slow</div>`;
+            } else {
+                html += `<div style="color: #f59e0b;">r &gt; d = ${d}: shortcuts too local, greedy routing slow</div>`;
+            }
+            html += '<div style="margin-top: 0.3rem;">When rewiring, P(u &rarr; v) &prop; ringDist(u, v)<sup>&minus;r</sup>. r = 0 reduces to Watts-Strogatz.</div>';
+            html += '</div>';
+
+            // Delta-cube panel
+            if (kgState.showDelta && kgState.source != null && kgState.target != null) {
+                html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+                html += `<div class="stat-label" style="margin-bottom: 0.3rem;">&Delta;-cube (d = k/2 = ${kgState.d}):</div>`;
+                html += `<div class="stat-row"><span class="stat-label">Source s</span><span class="stat-value">${indexToLabel(kgState.source)} (#${kgState.source})</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">Target t</span><span class="stat-value">${indexToLabel(kgState.target)} (#${kgState.target})</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">Ring dist(s, t)</span><span class="stat-value">${kgState.ringDistance}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">T</span><span class="stat-value">${kgState.T.toFixed(2)}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">&Delta; = T/4</span><span class="stat-value">${kgState.delta.toFixed(2)}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">|cube|</span><span class="stat-value">${kgState.deltaCubeSet.size}</span></div>`;
+                html += '<div style="font-size: 0.78rem; color: #94a3b8; margin-top: 0.5rem; line-height: 1.5;">';
+                html += 'In expectation, O(T) greedy steps suffice. The &Delta;-cube around t (Manhattan distance &le; &Delta;) is the absorbing region used in the proof.';
+                html += '</div></div>';
+            }
+
+            // Annuli panel
+            if (kgState.showAnnuli && kgState.target != null && kgState.annuli.length > 0) {
+                html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+                html += `<div class="stat-label" style="margin-bottom: 0.3rem;">Annuli around t (s = &lfloor;log<sub>2</sub>(n/2)&rfloor; = ${kgState.annuli.length - 1}):</div>`;
+                html += '<div class="component-colors">';
+                kgState.annuli.forEach((a, level) => {
+                    const color = kgAnnulusColor(level, kgState.annuli.length);
+                    html += `<span class="component-chip" style="background: ${color}; color: #fff;" title="r=${a.r}, |A|=${a.vertices.size}">r=${a.r}: ${a.vertices.size}</span>`;
+                });
+                html += '</div>';
+                html += '<div style="font-size: 0.78rem; color: #94a3b8; margin-top: 0.5rem; line-height: 1.5;">';
+                html += 'A<sub>r</sub>(t) = {u : r &le; dist(u, t) &lt; 2r}. With r = d, the long-range edge probability is roughly uniform across the log n annuli &mdash; the key invariant in the navigability proof.';
+                html += '</div></div>';
+            }
+
+            document.getElementById('kg-stats-content').innerHTML = html;
+        }
+
+        function kgDrawGraph(graphData, stats) {
+            const container = document.getElementById('kg-graph-container');
+            container.innerHTML = '';
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const n = graphData.nodes.length;
+            const cx = width / 2;
+            const cy = height / 2;
+            const radius = Math.min(width, height) * 0.4;
+            const nodeR = n > 60 ? 5 : n > 30 ? 8 : 12;
+            const fontSize = n > 60 ? '0px' : n > 30 ? '8px' : '10px';
+
+            const svg = d3.select('#kg-graph-container')
+                .append('svg')
+                .attr('viewBox', [0, 0, width, height]);
+
+            const nodes = graphData.nodes.map((nd, i) => {
+                const theta = (2 * Math.PI * i) / n - Math.PI / 2;
+                return {
+                    ...nd,
+                    x: cx + radius * Math.cos(theta),
+                    y: cy + radius * Math.sin(theta),
+                    theta,
+                };
+            });
+            const nodeById = new Map(nodes.map(nd => [nd.id, nd]));
+
+            const g = svg.append('g');
+
+            // Annuli around target — concentric ring bands at increasing radii
+            if (kgState.showAnnuli && kgState.target != null && kgState.annuli.length > 0) {
+                const t = kgState.target;
+                const numLevels = kgState.annuli.length;
+                // Bands stack outward from the ring radius
+                const bandWidth = Math.max(4, nodeR * 0.9);
+                kgState.annuli.forEach((annulus, level) => {
+                    const r = annulus.r;
+                    const innerR = radius + bandWidth * level + 2;
+                    const outerR = innerR + bandWidth;
+                    const color = kgAnnulusColor(level, numLevels);
+                    // Right side: vertices t+r .. t+2r-1
+                    // Left side: vertices t-(2r-1) .. t-r
+                    const sides = [
+                        { center: t + r + (r - 1) / 2, halfSpan: r / 2 },
+                        { center: t - r - (r - 1) / 2, halfSpan: r / 2 },
+                    ];
+                    sides.forEach(({ center, halfSpan }) => {
+                        const startA = (center - halfSpan) * 2 * Math.PI / n;
+                        const endA = (center + halfSpan) * 2 * Math.PI / n;
+                        const arcGen = d3.arc()
+                            .innerRadius(innerR)
+                            .outerRadius(outerR)
+                            .startAngle(startA)
+                            .endAngle(endA);
+                        g.append('path')
+                            .attr('transform', `translate(${cx},${cy})`)
+                            .attr('d', arcGen())
+                            .attr('fill', color)
+                            .attr('opacity', 0.55);
+                    });
+                    // Tiny label on the right band with r value
+                    const labelAngle = (t + r + (r - 1) / 2) * 2 * Math.PI / n - Math.PI / 2;
+                    const labelR = (innerR + outerR) / 2;
+                    const lx = cx + labelR * Math.cos(labelAngle);
+                    const ly = cy + labelR * Math.sin(labelAngle);
+                    g.append('text')
+                        .attr('x', lx)
+                        .attr('y', ly)
+                        .attr('text-anchor', 'middle')
+                        .attr('dominant-baseline', 'central')
+                        .style('font-size', '10px')
+                        .style('font-weight', 'bold')
+                        .style('fill', '#fff')
+                        .style('paint-order', 'stroke')
+                        .style('stroke', '#0f0f1a')
+                        .style('stroke-width', '2px')
+                        .text(`r=${r}`);
+                });
+            }
+
+            // Δ-cube arc highlight (same style as WS)
+            if (kgState.showDelta && kgState.target != null && kgState.deltaCubeSet.size > 0) {
+                const t = kgState.target;
+                const Delta = kgState.delta;
+                const arcWidth = nodeR * 2.4;
+                const innerR = radius - arcWidth / 2;
+                const outerR = radius + arcWidth / 2;
+                if (kgState.deltaCubeSet.size >= n) {
+                    g.append('circle')
+                        .attr('cx', cx).attr('cy', cy)
+                        .attr('r', radius)
+                        .attr('fill', 'none')
+                        .attr('stroke', '#fbbf24')
+                        .attr('stroke-width', arcWidth)
+                        .attr('stroke-opacity', 0.18);
+                } else {
+                    const tTheta = (2 * Math.PI * t) / n - Math.PI / 2;
+                    const span = (2 * Math.PI * Delta) / n;
+                    const arcGen = d3.arc()
+                        .innerRadius(innerR)
+                        .outerRadius(outerR)
+                        .startAngle(tTheta - span + Math.PI / 2)
+                        .endAngle(tTheta + span + Math.PI / 2);
+                    g.append('path')
+                        .attr('transform', `translate(${cx},${cy})`)
+                        .attr('d', arcGen())
+                        .attr('fill', '#fbbf24')
+                        .attr('opacity', 0.22);
+                }
+            }
+
+            // Edges: ring vs rewired
+            g.append('g')
+                .selectAll('line')
+                .data(graphData.edges)
+                .join('line')
+                .attr('x1', d => nodeById.get(d.source).x)
+                .attr('y1', d => nodeById.get(d.source).y)
+                .attr('x2', d => nodeById.get(d.target).x)
+                .attr('y2', d => nodeById.get(d.target).y)
+                .attr('stroke', d => d.kind === 'ring' ? '#4a90a4' : '#fbbf24')
+                .attr('stroke-width', d => d.kind === 'ring' ? 1.2 : 1.8)
+                .attr('stroke-opacity', d => d.kind === 'ring' ? 0.5 : 0.9);
+
+            const sId = kgState.source;
+            const tId = kgState.target;
+            const selectableMode = kgState.showDelta || kgState.showAnnuli;
+            const showSel = selectableMode && sId != null;
+            const showCube = kgState.showDelta && tId != null;
+            const cube = kgState.deltaCubeSet;
+
+            const node = g.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .join('g')
+                .attr('class', 'node')
+                .attr('transform', d => `translate(${d.x},${d.y})`);
+
+            if (selectableMode) {
+                node.style('cursor', 'pointer').on('click', (event, d) => kgNodeClicked(d.id));
+            }
+
+            node.append('circle')
+                .attr('r', d => showSel && (d.id === sId || d.id === tId) ? nodeR * 1.6 : nodeR)
+                .style('fill', d => {
+                    if (showSel) {
+                        if (d.id === tId) return '#ef4444';
+                        if (d.id === sId) return '#22c55e';
+                        if (showCube && cube.has(d.id)) return '#fbbf24';
+                    }
+                    return '#e94560';
+                })
+                .style('stroke', '#fff')
+                .style('stroke-width', d => showSel && (d.id === sId || d.id === tId) ? '2.5px' : '1.5px');
+
+            if (fontSize !== '0px') {
+                node.append('text')
+                    .text(d => d.label)
+                    .style('font-size', fontSize)
+                    .style('fill', '#fff')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle')
+                    .style('dominant-baseline', 'central')
+                    .style('pointer-events', 'none');
+            }
+
+            const legendH = kgState.showDelta ? 96 : (selectableMode ? 78 : 42);
+            const legend = svg.append('g').attr('transform', `translate(12, 12)`);
+            legend.append('rect').attr('x', 0).attr('y', 0).attr('width', 170).attr('height', legendH)
+                .attr('fill', '#16213e').attr('stroke', '#0f3460').attr('rx', 4);
+            legend.append('line').attr('x1', 8).attr('y1', 14).attr('x2', 28).attr('y2', 14)
+                .attr('stroke', '#4a90a4').attr('stroke-width', 1.2).attr('stroke-opacity', 0.5);
+            legend.append('text').attr('x', 34).attr('y', 18).attr('fill', '#94a3b8').style('font-size', '11px').text('ring edge');
+            legend.append('line').attr('x1', 8).attr('y1', 32).attr('x2', 28).attr('y2', 32)
+                .attr('stroke', '#fbbf24').attr('stroke-width', 1.8).attr('stroke-opacity', 0.9);
+            legend.append('text').attr('x', 34).attr('y', 36).attr('fill', '#94a3b8').style('font-size', '11px').text('rewired (\u221d d^{-r})');
+            if (selectableMode) {
+                legend.append('circle').attr('cx', 18).attr('cy', 50).attr('r', 5).attr('fill', '#22c55e');
+                legend.append('text').attr('x', 34).attr('y', 54).attr('fill', '#94a3b8').style('font-size', '11px').text('source s');
+                legend.append('circle').attr('cx', 18).attr('cy', 68).attr('r', 6).attr('fill', '#ef4444');
+                legend.append('text').attr('x', 34).attr('y', 72).attr('fill', '#94a3b8').style('font-size', '11px').text('target t');
+            }
+            if (kgState.showDelta) {
+                legend.append('circle').attr('cx', 18).attr('cy', 86).attr('r', 5).attr('fill', '#fbbf24');
+                legend.append('text').attr('x', 34).attr('y', 90).attr('fill', '#94a3b8').style('font-size', '11px').text('\u0394-cube vertex');
+            }
+
+            const zoom = d3.zoom()
+                .scaleExtent([0.3, 5])
+                .on('zoom', (event) => g.attr('transform', event.transform));
+            svg.call(zoom);
+        }
+
+        const kgState = {
+            graphData: null,
+            stats: null,
+            showDelta: false,
+            showAnnuli: false,
+            source: null,
+            target: null,
+            d: 1,
+            T: 0,
+            delta: 0,
+            deltaCubeSet: new Set(),
+            annuli: [],
+            ringDistance: 0,
+        };
+
+        function kgComputeAnnuli() {
+            kgState.annuli = [];
+            if (!kgState.graphData || kgState.target == null) return;
+            const n = kgState.graphData.nodes.length;
+            const t = kgState.target;
+            const maxDist = Math.floor(n / 2);
+            for (let r = 1; r < maxDist; r *= 2) {
+                const set = new Set();
+                for (let v = 0; v < n; v++) {
+                    if (v === t) continue;
+                    const d = kgRingDist(v, t, n);
+                    if (d >= r && d < 2 * r) set.add(v);
+                }
+                if (set.size > 0) kgState.annuli.push({ r, vertices: set });
+            }
+        }
+
+        function kgAnnulusColor(level, total) {
+            // Sequential blue-purple-pink palette across levels
+            const palette = ['#38bdf8', '#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#fb7185', '#fda4af'];
+            return palette[level % palette.length];
+        }
+
+        function kgNodeClicked(nodeId) {
+            if (!kgState.graphData) return;
+            if (!kgState.showDelta && !kgState.showAnnuli) return;
+            if (kgState.source === null) {
+                kgState.source = nodeId;
+                kgState.target = null;
+            } else if (kgState.target === null && nodeId !== kgState.source) {
+                kgState.target = nodeId;
+            } else {
+                kgState.source = nodeId;
+                kgState.target = null;
+            }
+            kgComputeDeltaCube();
+            kgComputeAnnuli();
+            kgRenderStats(kgState.stats);
+            kgDrawGraph(kgState.graphData, kgState.stats);
+        }
+
+        function kgPickST() {
+            if (!kgState.graphData) return;
+            const n = kgState.graphData.nodes.length;
+            if (n < 4) return;
+            const adj = new Set();
+            kgState.graphData.edges.forEach(e => {
+                const sid = typeof e.source === 'object' ? e.source.id : e.source;
+                const tid = typeof e.target === 'object' ? e.target.id : e.target;
+                adj.add(sid * n + tid);
+                adj.add(tid * n + sid);
+            });
+            let s = 0, t = 0, attempts = 0;
+            do {
+                s = Math.floor(Math.random() * n);
+                t = Math.floor(Math.random() * n);
+                attempts++;
+            } while ((s === t || adj.has(s * n + t)) && attempts < 1000);
+            kgState.source = s;
+            kgState.target = t;
+            kgComputeDeltaCube();
+            kgComputeAnnuli();
+            kgRenderStats(kgState.stats);
+            kgDrawGraph(kgState.graphData, kgState.stats);
+        }
+
+        function kgComputeDeltaCube() {
+            if (!kgState.graphData || kgState.target == null) {
+                kgState.deltaCubeSet = new Set();
+                return;
+            }
+            const n = kgState.graphData.nodes.length;
+            const beta = kgGetBeta();
+            const k = kgGetK();
+            const d = Math.max(1, k / 2);
+            let T;
+            if (beta > 0) {
+                T = Math.min(Math.pow(n, 1 / d), Math.pow(beta, -1 / (d + 1)));
+            } else {
+                T = Math.pow(n, 1 / d);
+            }
+            const Delta = T / 4;
+            kgState.d = d;
+            kgState.T = T;
+            kgState.delta = Delta;
+            const t = kgState.target;
+            const cube = new Set();
+            for (let v = 0; v < n; v++) {
+                if (kgRingDist(v, t, n) <= Delta) cube.add(v);
+            }
+            kgState.deltaCubeSet = cube;
+            kgState.ringDistance = kgState.source != null ? kgRingDist(kgState.source, t, n) : 0;
+        }
+
+        function kgUpdatePickButtonVisibility() {
+            const visible = kgState.showDelta || kgState.showAnnuli;
+            document.getElementById('kg-pick-st-btn').style.display = visible ? '' : 'none';
+        }
+
+        function kgToggleDelta() {
+            kgState.showDelta = document.getElementById('kg-delta-toggle').checked;
+            kgUpdatePickButtonVisibility();
+            if (!kgState.graphData) return;
+            if (kgState.showDelta && kgState.source == null) {
+                kgPickST();
+            } else {
+                kgRenderStats(kgState.stats);
+                kgDrawGraph(kgState.graphData, kgState.stats);
+            }
+        }
+
+        function kgToggleAnnuli() {
+            kgState.showAnnuli = document.getElementById('kg-annuli-toggle').checked;
+            kgUpdatePickButtonVisibility();
+            if (!kgState.graphData) return;
+            if (kgState.showAnnuli && kgState.target == null) {
+                kgPickST();
+            } else {
+                if (kgState.showAnnuli) kgComputeAnnuli();
+                kgRenderStats(kgState.stats);
+                kgDrawGraph(kgState.graphData, kgState.stats);
+            }
+        }
+
+        function kgParamChanged(which) {
+            if (!kgState.showDelta && !kgState.showAnnuli) return;
+            // n changes the ring layout — regenerate graph entirely
+            if (which === 'n') {
+                kgGenerate();
+                return;
+            }
+            // k, beta, r: keep graph, refresh derived quantities on it
+            if (!kgState.graphData) return;
+            if (kgState.showDelta) kgComputeDeltaCube();
+            if (kgState.showAnnuli) kgComputeAnnuli();
+            kgRenderStats(kgState.stats);
+            kgDrawGraph(kgState.graphData, kgState.stats);
+        }
+
+        function kgGenerate() {
+            const n = kgGetN();
+            const k = kgGetK();
+            const beta = kgGetBeta();
+            const r = kgGetR();
+            const graphData = kgGenerateGraph(n, k, beta, r);
+            const stats = kgComputeStats(graphData);
+            kgState.graphData = graphData;
+            kgState.stats = stats;
+            kgState.source = null;
+            kgState.target = null;
+            kgState.deltaCubeSet = new Set();
+            kgState.annuli = [];
+            if (kgState.showDelta || kgState.showAnnuli) kgPickST();
+            kgRenderStats(stats);
+            kgDrawGraph(graphData, stats);
+        }
+
+        // =====================
+        // GIRG MODEL
+        // =====================
+        const girgState = {
+            graphData: null,
+            stats: null,
+            showDelta: false,
+            showAnnuli: false,
+            showBall: false,
+            source: null,
+            target: null,
+            d: 1,
+            T: 0,
+            delta: 0,
+            deltaCubeSet: new Set(),
+            annuli: [],
+            sourceBallR: 0,
+            targetBallR: 0,
+            sourceBallSet: new Set(),
+            targetBallSet: new Set(),
+            ringDistance: 0,
+        };
+
+        function girgGetN() {
+            return parseInt(document.getElementById('girg-n-slider').value);
+        }
+        function girgGetTau() {
+            return parseInt(document.getElementById('girg-tau-slider').value) / 100;
+        }
+        function girgGetAlpha() {
+            return parseInt(document.getElementById('girg-alpha-slider').value) / 100;
+        }
+        function girgGetC() {
+            return parseInt(document.getElementById('girg-c-slider').value) / 100;
+        }
+        function girgGetDim() {
+            return parseInt(document.getElementById('girg-dim-slider').value);
+        }
+        function girgUpdateNDisplay() {
+            document.getElementById('girg-n-display').textContent = girgGetN();
+        }
+        function girgUpdateTauDisplay() {
+            document.getElementById('girg-tau-display').textContent = girgGetTau().toFixed(2);
+        }
+        function girgUpdateAlphaDisplay() {
+            document.getElementById('girg-alpha-display').textContent = girgGetAlpha().toFixed(2);
+        }
+        function girgUpdateCDisplay() {
+            document.getElementById('girg-c-display').textContent = girgGetC().toFixed(2);
+        }
+        function girgUpdateDimDisplay() {
+            document.getElementById('girg-dim-display').textContent = girgGetDim();
+        }
+
+        function girgTorusDistInf(pa, pb) {
+            // L_infinity distance on the torus [0, 1)^d
+            let maxC = 0;
+            for (let i = 0; i < pa.length; i++) {
+                let d = Math.abs(pa[i] - pb[i]);
+                if (d > 0.5) d = 1 - d;
+                if (d > maxC) maxC = d;
+            }
+            return maxC;
+        }
+
+        function girgRingDist(a, b, n) {
+            const d = Math.abs(a - b);
+            return Math.min(d, n - d);
+        }
+
+        function girgGenerateGraph(n, tau, alpha, dim, c) {
+            const nodes = [];
+            const weights = [];
+            const positions = [];
+            for (let i = 0; i < n; i++) {
+                const w = clPowerLawSample(tau);
+                weights.push(w);
+                const pos = [];
+                for (let j = 0; j < dim; j++) pos.push(Math.random());
+                positions.push(pos);
+                nodes.push({ id: i, label: indexToLabel(i), weight: w, pos });
+            }
+            const W = weights.reduce((a, b) => a + b, 0);
+
+            // Ring layout: sort node ids by first coordinate so neighbours on the ring share similar pos[0]
+            const ringOrder = nodes.map(nd => nd.id).sort((a, b) => positions[a][0] - positions[b][0]);
+            const ringIdxOf = new Array(n);
+            ringOrder.forEach((id, idx) => { ringIdxOf[id] = idx; });
+
+            const edges = [];
+            for (let i = 0; i < n; i++) {
+                for (let j = i + 1; j < n; j++) {
+                    const d = girgTorusDistInf(positions[i], positions[j]);
+                    if (d <= 0) {
+                        edges.push({ source: i, target: j });
+                        continue;
+                    }
+                    const base = (weights[i] * weights[j]) / (W * Math.pow(d, dim));
+                    const p = Math.min(1, c * Math.pow(base, alpha));
+                    if (Math.random() < p) {
+                        edges.push({ source: i, target: j });
+                    }
+                }
+            }
+
+            return { nodes, edges, weights, W, dim, tau, alpha, c, positions, ringOrder, ringIdxOf };
+        }
+
+        function girgComputeStats(graphData) {
+            const { nodes, edges, weights, W, dim, tau, alpha, c } = graphData;
+            const baseStats = computeStats(nodes, edges);
+            const sortedW = [...weights].sort((a, b) => a - b);
+            const meanW = W / nodes.length;
+            const medianW = sortedW[Math.floor(sortedW.length / 2)];
+            const minW = sortedW[0];
+            const maxW = sortedW[sortedW.length - 1];
+
+            // Average geometric edge length (helps see the "geometric" character)
+            let totalGeoLen = 0;
+            edges.forEach(e => {
+                const sid = typeof e.source === 'object' ? e.source.id : e.source;
+                const tid = typeof e.target === 'object' ? e.target.id : e.target;
+                totalGeoLen += girgTorusDistInf(graphData.positions[sid], graphData.positions[tid]);
+            });
+            const avgGeoLen = edges.length > 0 ? totalGeoLen / edges.length : 0;
+
+            return {
+                ...baseStats,
+                W, dim, tau, alpha, c,
+                meanWeight: meanW,
+                medianWeight: medianW,
+                minWeight: minW,
+                maxWeight: maxW,
+                avgGeoLen,
+            };
+        }
+
+        function girgRenderStats(stats) {
+            let html = '';
+            html += `<div class="stat-row"><span class="stat-label">d (dimension)</span><span class="stat-value">${stats.dim}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">&tau;</span><span class="stat-value">${stats.tau.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">&alpha;</span><span class="stat-value">${stats.alpha.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">c</span><span class="stat-value">${stats.c.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Nodes (n)</span><span class="stat-value">${stats.n}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Edges</span><span class="stat-value">${stats.m} / ${stats.maxEdges}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Density</span><span class="stat-value">${stats.density.toFixed(3)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Avg degree</span><span class="stat-value">${stats.avgDegree.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Min / Max degree</span><span class="stat-value">${stats.minDegree} / ${stats.maxDegree}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Components</span><span class="stat-value">${stats.numComponents}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Largest component</span><span class="stat-value">${stats.largestComponent}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Avg edge length (torus)</span><span class="stat-value">${stats.avgGeoLen.toFixed(3)}</span></div>`;
+
+            html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+            html += '<div class="stat-label" style="margin-bottom: 0.3rem;">Weight distribution:</div>';
+            html += `<div class="stat-row"><span class="stat-label">Mean</span><span class="stat-value">${stats.meanWeight.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Median</span><span class="stat-value">${stats.medianWeight.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Min / Max</span><span class="stat-value">${stats.minWeight.toFixed(2)} / ${stats.maxWeight.toFixed(2)}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Total W</span><span class="stat-value">${stats.W.toFixed(1)}</span></div>`;
+            html += '</div>';
+
+            html += '<div style="margin-top: 0.8rem; font-size: 0.8rem; color: #94a3b8; line-height: 1.5;">';
+            if (stats.alpha > 4) {
+                html += '<div style="color: #4ade80;">&alpha; large: sharp threshold &mdash; near-deterministic geometric kernel</div>';
+            } else if (stats.alpha > 1.5) {
+                html += '<div style="color: #38bdf8;">moderate &alpha;: classic GIRG regime</div>';
+            } else {
+                html += '<div style="color: #f59e0b;">&alpha; near 1: geometry weakens, behaviour approaches Chung-Lu</div>';
+            }
+            if (stats.tau > 3) {
+                html += '<div style="margin-top: 0.3rem;">&tau; &gt; 3: finite-variance weights (well-behaved degree)</div>';
+            } else if (stats.tau > 2) {
+                html += '<div style="margin-top: 0.3rem; color: #f59e0b;">2 &lt; &tau; &le; 3: heavy-tailed (hub-dominated, scale-free)</div>';
+            } else {
+                html += '<div style="margin-top: 0.3rem; color: #e94560;">&tau; &le; 2: infinite-mean weights, near-complete</div>';
+            }
+            html += '</div>';
+
+            // Component sizes
+            if (stats.components.length > 1) {
+                html += '<div style="margin-top: 0.8rem;">';
+                html += '<div class="stat-label" style="margin-bottom: 0.3rem;">Component sizes:</div>';
+                html += '<div class="component-colors">';
+                stats.components.forEach((comp, i) => {
+                    const color = componentColor(i);
+                    html += `<span class="component-chip" style="background: ${color}; color: #fff;">${comp.length}</span>`;
+                });
+                html += '</div></div>';
+            }
+
+            // Selection panel (s, t) — shown whenever a Δ-cube or annuli toggle is on
+            const selOn = (girgState.showDelta || girgState.showAnnuli) && girgState.source != null && girgState.target != null;
+            if (selOn) {
+                html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+                html += '<div class="stat-label" style="margin-bottom: 0.3rem;">Selection:</div>';
+                html += `<div class="stat-row"><span class="stat-label">Source s</span><span class="stat-value" style="color: #22c55e;">${indexToLabel(girgState.source)} (#${girgState.source})</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">Target t</span><span class="stat-value" style="color: #ef4444;">${indexToLabel(girgState.target)} (#${girgState.target})</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">Ring dist(s, t)</span><span class="stat-value">${girgState.ringDistance}</span></div>`;
+                html += '</div>';
+            }
+
+            // Δ-cube panel
+            if (girgState.showDelta && girgState.source != null && girgState.target != null) {
+                html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+                html += `<div class="stat-label" style="margin-bottom: 0.3rem;">&Delta;-cube (d = ${girgState.d}):</div>`;
+                html += `<div class="stat-row"><span class="stat-label">T = n<sup>1/d</sup></span><span class="stat-value">${girgState.T.toFixed(2)}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">&Delta; = T/4</span><span class="stat-value">${girgState.delta.toFixed(2)}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">|cube|</span><span class="stat-value">${girgState.deltaCubeSet.size}</span></div>`;
+                html += '</div>';
+            }
+
+            // Ball of influence panel
+            if (girgState.showBall && girgState.source != null && girgState.target != null) {
+                const ws = girgState.graphData.nodes[girgState.source].weight;
+                const wt = girgState.graphData.nodes[girgState.target].weight;
+                html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+                html += `<div class="stat-label" style="margin-bottom: 0.3rem;">Ball of influence (r = w<sup>1/d</sup>, d = ${girgState.d}):</div>`;
+                html += `<div class="stat-row"><span class="stat-label">w<sub>s</sub> &rarr; r<sub>s</sub></span><span class="stat-value" style="color: #22c55e;">${ws.toFixed(2)} &rarr; ${girgState.sourceBallR.toFixed(2)}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">w<sub>t</sub> &rarr; r<sub>t</sub></span><span class="stat-value" style="color: #ef4444;">${wt.toFixed(2)} &rarr; ${girgState.targetBallR.toFixed(2)}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">|ball(s)|</span><span class="stat-value">${girgState.sourceBallSet.size}</span></div>`;
+                html += `<div class="stat-row"><span class="stat-label">|ball(t)|</span><span class="stat-value">${girgState.targetBallSet.size}</span></div>`;
+                html += '</div>';
+            }
+
+            // Annuli panel
+            if (girgState.showAnnuli && girgState.target != null && girgState.annuli.length > 0) {
+                html += '<div style="margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #0f3460;">';
+                html += `<div class="stat-label" style="margin-bottom: 0.3rem;">Annuli around t (s = &lfloor;log<sub>2</sub>(n/2)&rfloor; = ${girgState.annuli.length - 1}):</div>`;
+                html += '<div class="component-colors">';
+                girgState.annuli.forEach((a, level) => {
+                    const color = kgAnnulusColor(level, girgState.annuli.length);
+                    html += `<span class="component-chip" style="background: ${color}; color: #fff;" title="r=${a.r}, |A|=${a.vertices.size}">r=${a.r}: ${a.vertices.size}</span>`;
+                });
+                html += '</div></div>';
+            }
+
+            document.getElementById('girg-stats-content').innerHTML = html;
+        }
+
+        function girgDrawGraph(graphData, stats) {
+            const container = document.getElementById('girg-graph-container');
+            container.innerHTML = '';
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const n = graphData.nodes.length;
+            const maxW = stats.maxWeight;
+            const baseR = n > 150 ? 4 : n > 80 ? 6 : n > 40 ? 9 : 12;
+            const fontSize = n > 80 ? '0px' : n > 40 ? '8px' : '10px';
+
+            const svg = d3.select('#girg-graph-container')
+                .append('svg')
+                .attr('viewBox', [0, 0, width, height]);
+
+            const nodeComponent = new Map();
+            stats.components.forEach((comp, i) => {
+                comp.forEach(nodeId => nodeComponent.set(nodeId, i));
+            });
+
+            const cx = width / 2, cy = height / 2;
+            const ringR = Math.min(width, height) * 0.4;
+
+            // Place nodes equally spaced on the ring, in sorted order by pos[0]
+            const ringIdxOf = graphData.ringIdxOf;
+            const nodes = graphData.nodes.map(nd => {
+                const idx = ringIdxOf[nd.id];
+                const theta = (2 * Math.PI * idx) / n - Math.PI / 2;
+                return {
+                    ...nd,
+                    componentIndex: nodeComponent.get(nd.id) || 0,
+                    x: cx + ringR * Math.cos(theta),
+                    y: cy + ringR * Math.sin(theta),
+                    r: baseR * (0.55 + 0.6 * Math.sqrt(nd.weight / maxW)),
+                    ringIdx: idx,
+                };
+            });
+            const nodeById = new Map(nodes.map(nd => [nd.id, nd]));
+
+            const g = svg.append('g');
+
+            // Faint ring outline
+            g.append('circle')
+                .attr('cx', cx).attr('cy', cy).attr('r', ringR)
+                .attr('fill', 'none')
+                .attr('stroke', '#0f3460')
+                .attr('stroke-width', 1)
+                .attr('stroke-dasharray', '2,3');
+
+            // Annuli (drawn outside the ring like in Kleinberg)
+            if (girgState.showAnnuli && girgState.target != null && girgState.annuli.length > 0) {
+                const t = girgState.target;
+                const tIdx = ringIdxOf[t];
+                const bandWidth = Math.max(4, baseR * 0.9);
+                girgState.annuli.forEach((annulus, level) => {
+                    const r = annulus.r;
+                    const innerR = ringR + bandWidth * level + 2;
+                    const outerR = innerR + bandWidth;
+                    const color = kgAnnulusColor(level, girgState.annuli.length);
+                    const sides = [
+                        { center: tIdx + r + (r - 1) / 2, halfSpan: r / 2 },
+                        { center: tIdx - r - (r - 1) / 2, halfSpan: r / 2 },
+                    ];
+                    sides.forEach(({ center, halfSpan }) => {
+                        const startA = (center - halfSpan) * 2 * Math.PI / n;
+                        const endA = (center + halfSpan) * 2 * Math.PI / n;
+                        const arcGen = d3.arc()
+                            .innerRadius(innerR)
+                            .outerRadius(outerR)
+                            .startAngle(startA)
+                            .endAngle(endA);
+                        g.append('path')
+                            .attr('transform', `translate(${cx},${cy})`)
+                            .attr('d', arcGen())
+                            .attr('fill', color)
+                            .attr('opacity', 0.55);
+                    });
+                    const labelAngle = (tIdx + r + (r - 1) / 2) * 2 * Math.PI / n - Math.PI / 2;
+                    const labelR = (innerR + outerR) / 2;
+                    const lx = cx + labelR * Math.cos(labelAngle);
+                    const ly = cy + labelR * Math.sin(labelAngle);
+                    g.append('text')
+                        .attr('x', lx).attr('y', ly)
+                        .attr('text-anchor', 'middle')
+                        .attr('dominant-baseline', 'central')
+                        .style('font-size', '10px')
+                        .style('font-weight', 'bold')
+                        .style('fill', '#fff')
+                        .style('paint-order', 'stroke')
+                        .style('stroke', '#0f0f1a')
+                        .style('stroke-width', '2px')
+                        .text(`r=${r}`);
+                });
+            }
+
+            // Δ-cube arc on the ring
+            if (girgState.showDelta && girgState.target != null && girgState.deltaCubeSet.size > 0) {
+                const tIdx = ringIdxOf[girgState.target];
+                const Delta = girgState.delta;
+                const arcWidth = baseR * 2.4;
+                const innerR = ringR - arcWidth / 2;
+                const outerR = ringR + arcWidth / 2;
+                if (girgState.deltaCubeSet.size >= n) {
+                    g.append('circle')
+                        .attr('cx', cx).attr('cy', cy)
+                        .attr('r', ringR)
+                        .attr('fill', 'none')
+                        .attr('stroke', '#fbbf24')
+                        .attr('stroke-width', arcWidth)
+                        .attr('stroke-opacity', 0.18);
+                } else {
+                    const tTheta = (2 * Math.PI * tIdx) / n - Math.PI / 2;
+                    const span = (2 * Math.PI * Delta) / n;
+                    const arcGen = d3.arc()
+                        .innerRadius(innerR)
+                        .outerRadius(outerR)
+                        .startAngle(tTheta - span + Math.PI / 2)
+                        .endAngle(tTheta + span + Math.PI / 2);
+                    g.append('path')
+                        .attr('transform', `translate(${cx},${cy})`)
+                        .attr('d', arcGen())
+                        .attr('fill', '#fbbf24')
+                        .attr('opacity', 0.22);
+                }
+            }
+
+            // Balls of influence around s and t (inner band so they don't fight the Δ-cube)
+            if (girgState.showBall && girgState.source != null && girgState.target != null) {
+                const drawBall = (vId, radius, color) => {
+                    if (radius <= 0) return;
+                    const idx = ringIdxOf[vId];
+                    const arcWidth = baseR * 1.6;
+                    const ballInnerR = ringR - arcWidth - baseR * 1.6;
+                    const ballOuterR = ballInnerR + arcWidth;
+                    if (radius * 2 >= n) {
+                        g.append('circle')
+                            .attr('cx', cx).attr('cy', cy)
+                            .attr('r', (ballInnerR + ballOuterR) / 2)
+                            .attr('fill', 'none')
+                            .attr('stroke', color)
+                            .attr('stroke-width', arcWidth)
+                            .attr('stroke-opacity', 0.18);
+                    } else {
+                        const theta = (2 * Math.PI * idx) / n - Math.PI / 2;
+                        const span = (2 * Math.PI * radius) / n;
+                        const arcGen = d3.arc()
+                            .innerRadius(ballInnerR)
+                            .outerRadius(ballOuterR)
+                            .startAngle(theta - span + Math.PI / 2)
+                            .endAngle(theta + span + Math.PI / 2);
+                        g.append('path')
+                            .attr('transform', `translate(${cx},${cy})`)
+                            .attr('d', arcGen())
+                            .attr('fill', color)
+                            .attr('opacity', 0.28);
+                    }
+                };
+                drawBall(girgState.source, girgState.sourceBallR, '#22c55e');
+                drawBall(girgState.target, girgState.targetBallR, '#ef4444');
+            }
+
+            // Classify edges as ring-local vs long-range by ring-index distance.
+            // Threshold ≈ √n: edges spanning more than this many ring positions are "random".
+            const longThreshold = Math.max(2, Math.round(Math.sqrt(n)));
+            const isLongEdge = e => {
+                const sid = typeof e.source === 'object' ? e.source.id : e.source;
+                const tid = typeof e.target === 'object' ? e.target.id : e.target;
+                return girgRingDist(ringIdxOf[sid], ringIdxOf[tid], n) > longThreshold;
+            };
+
+            // Edges — draw ring-local first, long-range on top so shortcuts pop out
+            const edgeData = graphData.edges.map(e => ({ ...e, _long: isLongEdge(e) }));
+            edgeData.sort((a, b) => (a._long ? 1 : 0) - (b._long ? 1 : 0));
+            g.append('g')
+                .selectAll('line')
+                .data(edgeData)
+                .join('line')
+                .attr('x1', d => nodeById.get(d.source).x)
+                .attr('y1', d => nodeById.get(d.source).y)
+                .attr('x2', d => nodeById.get(d.target).x)
+                .attr('y2', d => nodeById.get(d.target).y)
+                .attr('stroke', d => d._long ? '#fbbf24' : '#4a90a4')
+                .attr('stroke-width', d => d._long ? 1.4 : 1.0)
+                .attr('stroke-opacity', d => d._long ? 0.85 : 0.5);
+
+            const sId = girgState.source;
+            const tId = girgState.target;
+            const selectableMode = girgState.showDelta || girgState.showAnnuli || girgState.showBall;
+            const hasSelection = selectableMode && sId != null;
+            const showDelta = girgState.showDelta && tId != null;
+            const cube = girgState.deltaCubeSet;
+
+            const node = g.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .join('g')
+                .attr('class', 'node')
+                .attr('transform', d => `translate(${d.x},${d.y})`);
+
+            if (selectableMode) {
+                node.style('cursor', 'pointer').on('click', (event, d) => girgNodeClicked(d.id));
+            }
+
+            node.append('circle')
+                .attr('r', d => hasSelection && (d.id === sId || d.id === tId) ? d.r * 1.5 : d.r)
+                .style('fill', d => {
+                    if (hasSelection) {
+                        if (d.id === tId) return '#ef4444';
+                        if (d.id === sId) return '#22c55e';
+                    }
+                    if (showDelta && cube.has(d.id)) return '#fbbf24';
+                    return componentColor(d.componentIndex);
+                })
+                .style('stroke', '#fff')
+                .style('stroke-width', d => hasSelection && (d.id === sId || d.id === tId) ? '2.5px' : '1.5px');
+
+            if (fontSize !== '0px') {
+                node.append('text')
+                    .text(d => d.label)
+                    .style('font-size', fontSize)
+                    .style('fill', '#fff')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle')
+                    .style('dominant-baseline', 'central')
+                    .style('pointer-events', 'none');
+            }
+
+            node.append('title')
+                .text(d => `${d.label}: w=${d.weight.toFixed(2)}, pos=(${d.pos.map(v => v.toFixed(2)).join(', ')})`);
+
+            // Legend
+            const legendRows = [];
+            legendRows.push({ kind: 'line', color: '#4a90a4', width: 1.0, opacity: 0.5, text: `ring-local edge (ringDist \u2264 \u221An \u2248 ${longThreshold})` });
+            legendRows.push({ kind: 'line', color: '#fbbf24', width: 1.4, opacity: 0.85, text: `random edge (ringDist > \u221An \u2248 ${longThreshold})` });
+            legendRows.push({ kind: 'text', text: 'node radius \u221d \u221aweight' });
+            if (hasSelection) {
+                legendRows.push({ kind: 'circle', color: '#22c55e', radius: 5, text: 'source s' });
+                legendRows.push({ kind: 'circle', color: '#ef4444', radius: 6, text: 'target t' });
+            }
+            if (showDelta) {
+                legendRows.push({ kind: 'circle', color: '#fbbf24', radius: 5, text: '\u0394-cube vertex' });
+            }
+            if (girgState.showBall && girgState.source != null) {
+                legendRows.push({ kind: 'line', color: '#22c55e', width: 5, opacity: 0.45, text: `ball(s), r = ${girgState.sourceBallR.toFixed(2)}` });
+                legendRows.push({ kind: 'line', color: '#ef4444', width: 5, opacity: 0.45, text: `ball(t), r = ${girgState.targetBallR.toFixed(2)}` });
+            }
+            const legendH = 8 + legendRows.length * 18;
+            const legend = svg.append('g').attr('transform', `translate(12, 12)`);
+            legend.append('rect').attr('x', 0).attr('y', 0).attr('width', 240).attr('height', legendH)
+                .attr('fill', '#16213e').attr('stroke', '#0f3460').attr('rx', 4);
+            legendRows.forEach((row, i) => {
+                const y = 14 + i * 18;
+                if (row.kind === 'line') {
+                    legend.append('line').attr('x1', 8).attr('y1', y).attr('x2', 28).attr('y2', y)
+                        .attr('stroke', row.color).attr('stroke-width', row.width).attr('stroke-opacity', row.opacity);
+                } else if (row.kind === 'circle') {
+                    legend.append('circle').attr('cx', 18).attr('cy', y).attr('r', row.radius).attr('fill', row.color);
+                }
+                legend.append('text').attr('x', 34).attr('y', y + 4).attr('fill', '#94a3b8').style('font-size', '11px').text(row.text);
+            });
+
+            const zoom = d3.zoom()
+                .scaleExtent([0.3, 5])
+                .on('zoom', (event) => g.attr('transform', event.transform));
+            svg.call(zoom);
+        }
+
+        function girgNodeClicked(nodeId) {
+            if (!girgState.graphData) return;
+            if (!girgState.showDelta && !girgState.showAnnuli && !girgState.showBall) return;
+            if (girgState.source === null) {
+                girgState.source = nodeId;
+                girgState.target = null;
+            } else if (girgState.target === null && nodeId !== girgState.source) {
+                girgState.target = nodeId;
+            } else {
+                girgState.source = nodeId;
+                girgState.target = null;
+            }
+            girgComputeDeltaCube();
+            girgComputeAnnuli();
+            girgComputeBalls();
+            girgRenderStats(girgState.stats);
+            girgDrawGraph(girgState.graphData, girgState.stats);
+        }
+
+        function girgPickST() {
+            if (!girgState.graphData) return;
+            const n = girgState.graphData.nodes.length;
+            if (n < 2) return;
+            // Build per-node adjacency so we can look up non-neighbours directly
+            const adjOf = Array.from({ length: n }, () => new Set());
+            girgState.graphData.edges.forEach(e => {
+                const sid = typeof e.source === 'object' ? e.source.id : e.source;
+                const tid = typeof e.target === 'object' ? e.target.id : e.target;
+                adjOf[sid].add(tid);
+                adjOf[tid].add(sid);
+            });
+            const s = Math.floor(Math.random() * n);
+            const candidates = [];
+            for (let v = 0; v < n; v++) {
+                if (v !== s && !adjOf[s].has(v)) candidates.push(v);
+            }
+            let t;
+            if (candidates.length > 0) {
+                t = candidates[Math.floor(Math.random() * candidates.length)];
+            } else {
+                // s is connected to everyone; fall back to any other node
+                t = (s + 1) % n;
+            }
+            girgState.source = s;
+            girgState.target = t;
+            girgComputeDeltaCube();
+            girgComputeAnnuli();
+            girgComputeBalls();
+            girgRenderStats(girgState.stats);
+            girgDrawGraph(girgState.graphData, girgState.stats);
+        }
+
+        function girgComputeDeltaCube() {
+            if (!girgState.graphData || girgState.target == null) {
+                girgState.deltaCubeSet = new Set();
+                return;
+            }
+            const n = girgState.graphData.nodes.length;
+            const dim = girgGetDim();
+            const T = Math.pow(n, 1 / Math.max(1, dim));
+            const Delta = T / 4;
+            girgState.d = dim;
+            girgState.T = T;
+            girgState.delta = Delta;
+            const ringIdxOf = girgState.graphData.ringIdxOf;
+            const tIdx = ringIdxOf[girgState.target];
+            const cube = new Set();
+            for (let v = 0; v < n; v++) {
+                if (girgRingDist(ringIdxOf[v], tIdx, n) <= Delta) cube.add(v);
+            }
+            girgState.deltaCubeSet = cube;
+            girgState.ringDistance = girgState.source != null
+                ? girgRingDist(ringIdxOf[girgState.source], tIdx, n)
+                : 0;
+        }
+
+        function girgComputeAnnuli() {
+            girgState.annuli = [];
+            if (!girgState.graphData || girgState.target == null) return;
+            const n = girgState.graphData.nodes.length;
+            const ringIdxOf = girgState.graphData.ringIdxOf;
+            const tIdx = ringIdxOf[girgState.target];
+            const maxDist = Math.floor(n / 2);
+            for (let r = 1; r < maxDist; r *= 2) {
+                const set = new Set();
+                for (let v = 0; v < n; v++) {
+                    if (v === girgState.target) continue;
+                    const d = girgRingDist(ringIdxOf[v], tIdx, n);
+                    if (d >= r && d < 2 * r) set.add(v);
+                }
+                if (set.size > 0) girgState.annuli.push({ r, vertices: set });
+            }
+        }
+
+        function girgComputeBalls() {
+            girgState.sourceBallSet = new Set();
+            girgState.targetBallSet = new Set();
+            girgState.sourceBallR = 0;
+            girgState.targetBallR = 0;
+            if (!girgState.graphData || girgState.source == null || girgState.target == null) return;
+            const n = girgState.graphData.nodes.length;
+            const dim = girgGetDim();
+            const cap = n / 2;
+            const ringIdxOf = girgState.graphData.ringIdxOf;
+            const ws = girgState.graphData.nodes[girgState.source].weight;
+            const wt = girgState.graphData.nodes[girgState.target].weight;
+            const rs = Math.min(cap, Math.pow(ws, 1 / Math.max(1, dim)));
+            const rt = Math.min(cap, Math.pow(wt, 1 / Math.max(1, dim)));
+            girgState.sourceBallR = rs;
+            girgState.targetBallR = rt;
+            const sIdx = ringIdxOf[girgState.source];
+            const tIdx = ringIdxOf[girgState.target];
+            for (let v = 0; v < n; v++) {
+                const vi = ringIdxOf[v];
+                if (girgRingDist(vi, sIdx, n) <= rs) girgState.sourceBallSet.add(v);
+                if (girgRingDist(vi, tIdx, n) <= rt) girgState.targetBallSet.add(v);
+            }
+        }
+
+        function girgUpdatePickButtonVisibility() {
+            const visible = girgState.showDelta || girgState.showAnnuli || girgState.showBall;
+            document.getElementById('girg-pick-st-btn').style.display = visible ? '' : 'none';
+        }
+
+        function girgToggleDelta() {
+            girgState.showDelta = document.getElementById('girg-delta-toggle').checked;
+            girgUpdatePickButtonVisibility();
+            if (!girgState.graphData) return;
+            if (girgState.showDelta && girgState.source == null) {
+                girgPickST();
+            } else {
+                if (girgState.showDelta) girgComputeDeltaCube();
+                girgRenderStats(girgState.stats);
+                girgDrawGraph(girgState.graphData, girgState.stats);
+            }
+        }
+
+        function girgToggleAnnuli() {
+            girgState.showAnnuli = document.getElementById('girg-annuli-toggle').checked;
+            girgUpdatePickButtonVisibility();
+            if (!girgState.graphData) return;
+            if (girgState.showAnnuli && girgState.target == null) {
+                girgPickST();
+            } else {
+                if (girgState.showAnnuli) girgComputeAnnuli();
+                girgRenderStats(girgState.stats);
+                girgDrawGraph(girgState.graphData, girgState.stats);
+            }
+        }
+
+        function girgToggleBall() {
+            girgState.showBall = document.getElementById('girg-ball-toggle').checked;
+            girgUpdatePickButtonVisibility();
+            if (!girgState.graphData) return;
+            if (girgState.showBall && girgState.source == null) {
+                girgPickST();
+            } else {
+                if (girgState.showBall) girgComputeBalls();
+                girgRenderStats(girgState.stats);
+                girgDrawGraph(girgState.graphData, girgState.stats);
+            }
+        }
+
+        function girgParamChanged(which) {
+            if (!girgState.showDelta && !girgState.showAnnuli && !girgState.showBall) return;
+            // n, tau, alpha, c all affect graph topology — regenerate
+            if (which === 'n' || which === 'tau' || which === 'alpha' || which === 'c') {
+                girgGenerate();
+                return;
+            }
+            // dim: keep existing graph, refresh derived quantities on it
+            if (!girgState.graphData) return;
+            if (girgState.showDelta) girgComputeDeltaCube();
+            if (girgState.showBall) girgComputeBalls();
+            // annuli depend only on ring layout (unchanged when dim changes)
+            girgRenderStats(girgState.stats);
+            girgDrawGraph(girgState.graphData, girgState.stats);
+        }
+
+        function girgGenerate() {
+            const n = girgGetN();
+            const tau = girgGetTau();
+            const alpha = girgGetAlpha();
+            const dim = girgGetDim();
+            const c = girgGetC();
+            const graphData = girgGenerateGraph(n, tau, alpha, dim, c);
+            const stats = girgComputeStats(graphData);
+            girgState.graphData = graphData;
+            girgState.stats = stats;
+            girgState.source = null;
+            girgState.target = null;
+            girgState.deltaCubeSet = new Set();
+            girgState.annuli = [];
+            girgState.sourceBallSet = new Set();
+            girgState.targetBallSet = new Set();
+            if (girgState.showDelta || girgState.showAnnuli || girgState.showBall) girgPickST();
+            girgRenderStats(stats);
+            girgDrawGraph(graphData, stats);
+        }
+    </script>
+</body>
+</html>
