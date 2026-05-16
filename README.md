@@ -1,7 +1,6 @@
 # CNM Viz
 
 (unofficial) Interactive visualisations for the **Complex Network Models** course (FS 2026, ETH Zürich).  
-[vvz](https://vvz.ethz.ch/Vorlesungsverzeichnis/lerneinheit.view?lerneinheitId=199804&semkez=2026S&ansicht=LEHRVERANSTALTUNGEN)
 The dashboard was vibe-coded, overall there could be errors both in visualisation and in model spec, no guarantee whatsoever.
 
 Sources: 
@@ -11,9 +10,13 @@ Sources:
 
 ## Few screenshots
 
-| Galton–Watson | GIRG |
-| :---: | :---: |
-| ![Galton–Watson branching process](static/galton-watson.jpg) | ![GIRG on the d-torus](static/girg.jpg) |
+**Galton–Watson**
+
+![Galton–Watson branching process](static/galton-watson.jpg)
+
+**GIRG**
+
+![GIRG on the d-torus](static/girg.jpg)
 
 
 ## Models / tabs
